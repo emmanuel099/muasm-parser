@@ -1,0 +1,11 @@
+[package]
+name = "muasm-parser"
+version = "0.1.0"
+authors = ["Emmanuel Pescosta <emmanuelpescosta099@gmail.com>"]
+edition = "2018"
+description = "µASM Parser"
+license = "Apache-2.0"
+readme = "README.md"
+
+[dependencies]
+nom = "5.1.0"
