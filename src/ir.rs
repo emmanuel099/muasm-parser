@@ -59,6 +59,12 @@ pub enum BranchKind {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum Target {
+    Location(u64),
+    Label(String),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Operation {
     Skip,
     Barrier,
@@ -80,29 +86,39 @@ pub enum Operation {
         addr: Box<Expression>,
     },
     Jump {
-        target: Box<Expression>,
+        target: Target,
     },
     Branch {
         kind: BranchKind,
         reg: String,
-        target: Box<Expression>,
+        target: Target,
     },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Instruction {
     operation: Operation,
+    label: Option<String>,
 }
 
 impl Instruction {
     pub fn new(operation: Operation) -> Instruction {
         Instruction {
             operation: operation,
+            label: None,
         }
     }
 
     pub fn operation(&self) -> &Operation {
         &self.operation
+    }
+
+    pub fn set_label(&mut self, label: String) {
+        self.label = Some(label);
+    }
+
+    pub fn label(&self) -> &Option<String> {
+        &self.label
     }
 
     pub fn skip() -> Instruction {
@@ -142,11 +158,11 @@ impl Instruction {
         })
     }
 
-    pub fn jump(target: Box<Expression>) -> Instruction {
+    pub fn jump(target: Target) -> Instruction {
         Instruction::new(Operation::Jump { target: target })
     }
 
-    pub fn branch_if_zero(reg: String, target: Box<Expression>) -> Instruction {
+    pub fn branch_if_zero(reg: String, target: Target) -> Instruction {
         Instruction::new(Operation::Branch {
             kind: BranchKind::IfZero,
             reg: reg,
@@ -158,16 +174,26 @@ impl Instruction {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Program {
     instructions: Vec<Box<Instruction>>,
+    end_label: Option<String>,
 }
 
 impl Program {
     pub fn new(instructions: Vec<Box<Instruction>>) -> Program {
         Program {
             instructions: instructions,
+            end_label: None,
         }
     }
 
     pub fn instructions(&self) -> &Vec<Box<Instruction>> {
         &self.instructions
+    }
+
+    pub fn set_end_label(&mut self, label: String) {
+        self.end_label = Some(label);
+    }
+
+    pub fn end_label(&self) -> &Option<String> {
+        &self.end_label
     }
 }

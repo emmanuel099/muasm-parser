@@ -4,18 +4,32 @@ use nom::{
     bytes::complete::{tag, take_while, take_while1},
     character::complete::{digit1, hex_digit1, multispace0, space0},
     combinator::{iterator, map, map_res, value},
-    sequence::{preceded, tuple},
+    sequence::{preceded, terminated, tuple},
     IResult,
 };
 use std::str::FromStr;
 
 pub fn parse_program(input: &str) -> Result<ir::Program, &str> {
-    let mut it = iterator(input, preceded(multispace0, instruction));
+    let mut it = iterator(
+        input,
+        preceded(multispace0, alt((labeled_instruction, instruction))),
+    );
     let instructions = it.collect();
     match it.finish() {
-        Ok(_) => Result::Ok(ir::Program::new(instructions)),
+        Ok((rest, _)) => {
+            let mut program = ir::Program::new(instructions);
+            maybe_apply_end_label(rest, &mut program);
+            Result::Ok(program)
+        }
         Err(_) => Result::Err("Failed to parse program!"),
     }
+}
+
+fn maybe_apply_end_label(input: &str, program: &mut ir::Program) {
+    match preceded(multispace0, label)(input) {
+        Ok((_, end_lbl)) => program.set_end_label(end_lbl),
+        Err(_) => (),
+    };
 }
 
 fn identifier(input: &str) -> IResult<&str, String> {
@@ -39,9 +53,12 @@ fn hex_num(input: &str) -> IResult<&str, u64> {
     map_res(preceded(tag("0x"), hex_digit1), from_str)(input)
 }
 
+fn numeric(input: &str) -> IResult<&str, u64> {
+    alt((hex_num, dec_num))(input)
+}
+
 fn number_literal(input: &str) -> IResult<&str, Box<ir::Expression>> {
-    let num = alt((hex_num, dec_num));
-    map(num, |n: u64| Box::new(ir::Expression::NumberLiteral(n)))(input)
+    map(numeric, |n| Box::new(ir::Expression::NumberLiteral(n)))(input)
 }
 
 fn register_ref(input: &str) -> IResult<&str, Box<ir::Expression>> {
@@ -217,6 +234,22 @@ fn expression(input: &str) -> IResult<&str, Box<ir::Expression>> {
     ))(input)
 }
 
+fn label(input: &str) -> IResult<&str, String> {
+    terminated(identifier, tag(":"))(input)
+}
+
+fn target_location(input: &str) -> IResult<&str, ir::Target> {
+    map(identifier, |ident| ir::Target::Label(ident))(input)
+}
+
+fn target_label(input: &str) -> IResult<&str, ir::Target> {
+    map(numeric, |n| ir::Target::Location(n))(input)
+}
+
+fn target(input: &str) -> IResult<&str, ir::Target> {
+    alt((target_location, target_label))(input)
+}
+
 fn skip_instruction(input: &str) -> IResult<&str, Box<ir::Instruction>> {
     value(Box::new(ir::Instruction::skip()), tag("skip"))(input)
 }
@@ -276,7 +309,7 @@ fn store_instruction(input: &str) -> IResult<&str, Box<ir::Instruction>> {
 
 fn jump_instruction(input: &str) -> IResult<&str, Box<ir::Instruction>> {
     map(
-        tuple((preceded(space0, tag("jmp")), preceded(space0, expression))),
+        tuple((preceded(space0, tag("jmp")), preceded(space0, target))),
         |(_, target)| Box::new(ir::Instruction::jump(target)),
     )(input)
 }
@@ -287,7 +320,7 @@ fn branch_if_zero_instruction(input: &str) -> IResult<&str, Box<ir::Instruction>
             preceded(space0, tag("beqz")),
             preceded(space0, identifier),
             preceded(space0, tag(",")),
-            preceded(space0, expression),
+            preceded(space0, target),
         )),
         |(_, reg, _, target)| Box::new(ir::Instruction::branch_if_zero(reg, target)),
     )(input)
@@ -304,6 +337,16 @@ fn instruction(input: &str) -> IResult<&str, Box<ir::Instruction>> {
         jump_instruction,
         branch_if_zero_instruction,
     ))(input)
+}
+
+fn labeled_instruction(input: &str) -> IResult<&str, Box<ir::Instruction>> {
+    map(
+        tuple((label, preceded(multispace0, instruction))),
+        |(lbl, mut inst)| {
+            inst.set_label(lbl);
+            inst
+        },
+    )(input)
 }
 
 #[cfg(test)]
@@ -628,24 +671,68 @@ mod tests {
             super::instruction("jmp 42"),
             Ok((
                 "",
-                Box::new(super::ir::Instruction::jump(Box::new(
-                    super::ir::Expression::NumberLiteral(42)
+                Box::new(super::ir::Instruction::jump(super::ir::Target::Location(
+                    42
+                )))
+            ))
+        );
+        assert_eq!(
+            super::instruction("jmp lbl"),
+            Ok((
+                "",
+                Box::new(super::ir::Instruction::jump(super::ir::Target::Label(
+                    "lbl".to_string()
                 )))
             ))
         );
     }
 
     #[test]
-    fn parse_branch_if_zero_instruction_instruction() {
+    fn parse_branch_if_zero_instruction() {
         assert_eq!(
             super::instruction("beqz x, 42"),
             Ok((
                 "",
                 Box::new(super::ir::Instruction::branch_if_zero(
                     "x".to_string(),
-                    Box::new(super::ir::Expression::NumberLiteral(42))
+                    super::ir::Target::Location(42)
                 ))
             ))
+        );
+        assert_eq!(
+            super::instruction("beqz x, lbl"),
+            Ok((
+                "",
+                Box::new(super::ir::Instruction::branch_if_zero(
+                    "x".to_string(),
+                    super::ir::Target::Label("lbl".to_string())
+                ))
+            ))
+        );
+    }
+
+    #[test]
+    fn parse_label() {
+        assert_eq!(super::label("end:"), Ok(("", "end".to_string())));
+    }
+
+    #[test]
+    fn parse_labeled_instruction_with_space_between() {
+        let mut expected_inst = Box::new(super::ir::Instruction::skip());
+        expected_inst.set_label("Then".to_string());
+        assert_eq!(
+            super::labeled_instruction("Then: skip"),
+            Ok(("", expected_inst))
+        );
+    }
+
+    #[test]
+    fn parse_labeled_instruction_with_newline_between() {
+        let mut expected_inst = Box::new(super::ir::Instruction::skip());
+        expected_inst.set_label("Then".to_string());
+        assert_eq!(
+            super::labeled_instruction("Then:\n skip"),
+            Ok(("", expected_inst))
         );
     }
 
@@ -656,7 +743,7 @@ mod tests {
             Ok(super::ir::Program::new(vec![
                 Box::new(super::ir::Instruction::branch_if_zero(
                     "x".to_string(),
-                    Box::new(super::ir::Expression::NumberLiteral(42))
+                    super::ir::Target::Location(42)
                 )),
                 Box::new(super::ir::Instruction::store(
                     "x".to_string(),
@@ -673,7 +760,7 @@ mod tests {
             Ok(super::ir::Program::new(vec![
                 Box::new(super::ir::Instruction::branch_if_zero(
                     "x".to_string(),
-                    Box::new(super::ir::Expression::NumberLiteral(42))
+                    super::ir::Target::Location(42)
                 )),
                 Box::new(super::ir::Instruction::store(
                     "x".to_string(),
@@ -690,7 +777,7 @@ mod tests {
             Ok(super::ir::Program::new(vec![
                 Box::new(super::ir::Instruction::branch_if_zero(
                     "x".to_string(),
-                    Box::new(super::ir::Expression::NumberLiteral(42))
+                    super::ir::Target::Location(42)
                 )),
                 Box::new(super::ir::Instruction::store(
                     "x".to_string(),
@@ -707,7 +794,7 @@ mod tests {
             Ok(super::ir::Program::new(vec![Box::new(
                 super::ir::Instruction::branch_if_zero(
                     "x".to_string(),
-                    Box::new(super::ir::Expression::NumberLiteral(42))
+                    super::ir::Target::Location(42)
                 )
             )]))
         );
@@ -720,7 +807,7 @@ mod tests {
             Ok(super::ir::Program::new(vec![Box::new(
                 super::ir::Instruction::branch_if_zero(
                     "x".to_string(),
-                    Box::new(super::ir::Expression::NumberLiteral(42))
+                    super::ir::Target::Location(42)
                 )
             )]))
         );
@@ -733,7 +820,7 @@ mod tests {
             Ok(super::ir::Program::new(vec![
                 Box::new(super::ir::Instruction::branch_if_zero(
                     "x".to_string(),
-                    Box::new(super::ir::Expression::NumberLiteral(42))
+                    super::ir::Target::Location(42)
                 )),
                 Box::new(super::ir::Instruction::store(
                     "x".to_string(),
@@ -765,7 +852,7 @@ mod tests {
                 )),
                 Box::new(super::ir::Instruction::branch_if_zero(
                     "cond".to_string(),
-                    Box::new(super::ir::Expression::NumberLiteral(5))
+                    super::ir::Target::Location(5)
                 )),
                 Box::new(super::ir::Instruction::load(
                     "v".to_string(),
@@ -789,5 +876,58 @@ mod tests {
                 )),
             ]))
         );
+    }
+
+    #[test]
+    fn parse_test_program_with_labels() {
+        let src = r#"
+            cond <- x < array1_len
+            beqz cond, EndIf
+        Then:
+            load v, array1 + x
+            load tmp, array2 + v << 8
+        EndIf:
+        "#;
+
+        let mut labeled_load = Box::new(super::ir::Instruction::load(
+            "v".to_string(),
+            Box::new(super::ir::Expression::BinaryExpression {
+                op: super::ir::BinaryOperator::Add,
+                lhs: Box::new(super::ir::Expression::RegisterRef("array1".to_string())),
+                rhs: Box::new(super::ir::Expression::RegisterRef("x".to_string())),
+            }),
+        ));
+        labeled_load.set_label("Then".to_string());
+
+        let mut program = super::ir::Program::new(vec![
+            Box::new(super::ir::Instruction::assign(
+                "cond".to_string(),
+                Box::new(super::ir::Expression::BinaryExpression {
+                    op: super::ir::BinaryOperator::SLt,
+                    lhs: Box::new(super::ir::Expression::RegisterRef("x".to_string())),
+                    rhs: Box::new(super::ir::Expression::RegisterRef("array1_len".to_string())),
+                }),
+            )),
+            Box::new(super::ir::Instruction::branch_if_zero(
+                "cond".to_string(),
+                super::ir::Target::Label("EndIf".to_string()),
+            )),
+            labeled_load,
+            Box::new(super::ir::Instruction::load(
+                "tmp".to_string(),
+                Box::new(super::ir::Expression::BinaryExpression {
+                    op: super::ir::BinaryOperator::Add,
+                    lhs: Box::new(super::ir::Expression::RegisterRef("array2".to_string())),
+                    rhs: Box::new(super::ir::Expression::BinaryExpression {
+                        op: super::ir::BinaryOperator::Shl,
+                        lhs: Box::new(super::ir::Expression::RegisterRef("v".to_string())),
+                        rhs: Box::new(super::ir::Expression::NumberLiteral(8)),
+                    }),
+                }),
+            )),
+        ]);
+        program.set_end_label("EndIf".to_string());
+
+        assert_eq!(super::parse_program(src), Ok(program));
     }
 }
