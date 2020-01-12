@@ -1,3 +1,4 @@
+use crate::ir;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while, take_while1},
@@ -7,7 +8,6 @@ use nom::{
     IResult,
 };
 use std::str::FromStr;
-use crate::ir;
 
 pub fn parse_program(input: &str) -> Result<ir::Program, &str> {
     let mut it = iterator(input, preceded(multispace0, instruction));
@@ -62,114 +62,75 @@ fn unary_expression(input: &str) -> IResult<&str, Box<ir::Expression>> {
     )(input)
 }
 
-fn bitwise_expression(input: &str) -> IResult<&str, Box<ir::Expression>> {
-    let operator = alt((
+macro_rules! binary_expression {
+    ($func:ident, $operator:expr, $operand:expr) => {
+        fn $func(input: &str) -> IResult<&str, Box<ir::Expression>> {
+            map(
+                tuple((
+                    preceded(space0, $operand),
+                    preceded(space0, $operator),
+                    preceded(space0, $operand),
+                )),
+                |(e1, op, e2)| {
+                    Box::new(ir::Expression::BinaryExpression {
+                        op: op,
+                        lhs: e1,
+                        rhs: e2,
+                    })
+                },
+            )(input)
+        }
+    };
+}
+
+binary_expression!(
+    bitwise_expression,
+    alt((
         value(ir::BinaryOperator::And, tag("/\\")),
         value(ir::BinaryOperator::Or, tag("\\/")),
         value(ir::BinaryOperator::Xor, tag("#")),
         value(ir::BinaryOperator::Shl, tag("<<")),
         value(ir::BinaryOperator::AShr, tag(">>>")),
         value(ir::BinaryOperator::LShr, tag(">>")),
-    ));
-    let operand = simple_expression;
-    map(
-        tuple((
-            preceded(space0, operand),
-            preceded(space0, operator),
-            preceded(space0, operand),
-        )),
-        |(e1, op, e2)| {
-            Box::new(ir::Expression::BinaryExpression {
-                op: op,
-                lhs: e1,
-                rhs: e2,
-            })
-        },
-    )(input)
-}
+    )),
+    simple_expression
+);
 
-fn mul_div_expression(input: &str) -> IResult<&str, Box<ir::Expression>> {
-    let operator = alt((
+binary_expression!(
+    mul_div_expression,
+    alt((
         value(ir::BinaryOperator::Mul, tag("*")),
         value(ir::BinaryOperator::UDiv, tag("/")),
-    ));
-    let operand1 = alt((bitwise_expression, simple_expression));
-    let operand2 = alt((bitwise_expression, simple_expression));
-    map(
-        tuple((
-            preceded(space0, operand1),
-            preceded(space0, operator),
-            preceded(space0, operand2),
-        )),
-        |(e1, op, e2)| {
-            Box::new(ir::Expression::BinaryExpression {
-                op: op,
-                lhs: e1,
-                rhs: e2,
-            })
-        },
-    )(input)
-}
+    )),
+    alt((bitwise_expression, simple_expression))
+);
 
-fn add_sub_expression(input: &str) -> IResult<&str, Box<ir::Expression>> {
-    let operator = alt((
+binary_expression!(
+    add_sub_expression,
+    alt((
         value(ir::BinaryOperator::Add, tag("+")),
         value(ir::BinaryOperator::Sub, tag("-")),
-    ));
-    let operand1 = alt((mul_div_expression, bitwise_expression, simple_expression));
-    let operand2 = alt((mul_div_expression, bitwise_expression, simple_expression));
-    map(
-        tuple((
-            preceded(space0, operand1),
-            preceded(space0, operator),
-            preceded(space0, operand2),
-        )),
-        |(e1, op, e2)| {
-            Box::new(ir::Expression::BinaryExpression {
-                op: op,
-                lhs: e1,
-                rhs: e2,
-            })
-        },
-    )(input)
-}
+    )),
+    alt((mul_div_expression, bitwise_expression, simple_expression))
+);
 
-fn compare_expression(input: &str) -> IResult<&str, Box<ir::Expression>> {
-    let operator = alt((
+binary_expression!(
+    compare_expression,
+    alt((
         value(ir::BinaryOperator::r#Eq, tag("=")),
         value(ir::BinaryOperator::Neq, tag("\\=")),
         value(ir::BinaryOperator::SLe, tag("<=")),
         value(ir::BinaryOperator::SLt, tag("<")),
         value(ir::BinaryOperator::SGe, tag(">=")),
         value(ir::BinaryOperator::SGt, tag(">")),
-    ));
-    let operand1 = alt((
+    )),
+    alt((
         add_sub_expression,
         mul_div_expression,
         bitwise_expression,
         simple_expression,
-    ));
-    let operand2 = alt((
-        add_sub_expression,
-        mul_div_expression,
-        bitwise_expression,
-        simple_expression,
-    ));
-    map(
-        tuple((
-            preceded(space0, operand1),
-            preceded(space0, operator),
-            preceded(space0, operand2),
-        )),
-        |(e1, op, e2)| {
-            Box::new(ir::Expression::BinaryExpression {
-                op: op,
-                lhs: e1,
-                rhs: e2,
-            })
-        },
-    )(input)
-}
+    ))
+);
 
 fn binary_function(input: &str) -> IResult<&str, Box<ir::Expression>> {
     let function = alt((
