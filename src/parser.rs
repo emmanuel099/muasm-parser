@@ -3,33 +3,41 @@ use nom::{
     branch::alt,
     bytes::complete::{tag, take_while, take_while1},
     character::complete::{digit1, hex_digit1, multispace0, space0},
-    combinator::{iterator, map, map_res, value},
+    combinator::{all_consuming, map, map_res, opt, value},
+    multi::fold_many0,
     sequence::{preceded, terminated, tuple},
     IResult,
 };
 use std::str::FromStr;
 
 pub fn parse_program(input: &str) -> Result<ir::Program, &str> {
-    let mut it = iterator(
-        input,
-        preceded(multispace0, alt((labeled_instruction, instruction))),
-    );
-    let instructions = it.collect();
-    match it.finish() {
-        Ok((rest, _)) => {
+    let result = all_consuming(tuple((
+        instructions,
+        opt(preceded(multispace0, label)),
+        multispace0,
+    )))(input);
+    match result {
+        Ok((_, (instructions, opt_end_label, _))) => {
             let mut program = ir::Program::new(instructions);
-            maybe_apply_end_label(rest, &mut program);
-            Result::Ok(program)
+            match opt_end_label {
+                Some(lbl) => program.set_end_label(lbl),
+                None => (),
+            };
+            Ok(program)
         }
-        Err(_) => Result::Err("Failed to parse program!"),
+        Err(_) => Err("Failed to parse program!"),
     }
 }
 
-fn maybe_apply_end_label(input: &str, program: &mut ir::Program) {
-    match preceded(multispace0, label)(input) {
-        Ok((_, end_lbl)) => program.set_end_label(end_lbl),
-        Err(_) => (),
-    };
+fn instructions(input: &str) -> IResult<&str, Vec<Box<ir::Instruction>>> {
+    fold_many0(
+        preceded(multispace0, alt((labeled_instruction, instruction))),
+        Vec::new(),
+        |mut instructions: Vec<_>, inst| {
+            instructions.push(inst);
+            instructions
+        },
+    )(input)
 }
 
 fn identifier(input: &str) -> IResult<&str, String> {
@@ -929,5 +937,15 @@ mod tests {
         program.set_end_label("EndIf".to_string());
 
         assert_eq!(super::parse_program(src), Ok(program));
+    }
+
+    #[test]
+    fn parse_erroneous_program() {
+        let src = r#"
+            unknowninstruction
+
+        "#;
+
+        assert_eq!(super::parse_program(src), Err("Failed to parse program!"));
     }
 }
