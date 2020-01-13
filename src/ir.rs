@@ -1,4 +1,15 @@
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct Register {
+    name: String,
+}
+
+impl Register {
+    pub fn new(name: String) -> Register {
+        Register { name }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum UnaryOperator {
     Neg,
     Not,
@@ -36,7 +47,7 @@ pub enum BinaryOperator {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Expression {
     NumberLiteral(u64),
-    RegisterRef(String),
+    RegisterRef(Register),
     UnaryExpression {
         op: UnaryOperator,
         expr: Box<Expression>,
@@ -69,20 +80,20 @@ pub enum Operation {
     Skip,
     Barrier,
     Assignment {
-        reg: String,
+        reg: Register,
         expr: Expression,
     },
     ConditionalAssignment {
-        reg: String,
+        reg: Register,
         expr: Expression,
         cond: Expression,
     },
     Load {
-        reg: String,
+        reg: Register,
         addr: Expression,
     },
     Store {
-        reg: String,
+        reg: Register,
         addr: Expression,
     },
     Jump {
@@ -90,7 +101,7 @@ pub enum Operation {
     },
     Branch {
         kind: BranchKind,
-        reg: String,
+        reg: Register,
         target: Target,
     },
 }
@@ -129,19 +140,19 @@ impl Instruction {
         Instruction::new(Operation::Barrier)
     }
 
-    pub fn assign(reg: String, expr: Expression) -> Instruction {
+    pub fn assign(reg: Register, expr: Expression) -> Instruction {
         Instruction::new(Operation::Assignment { reg, expr })
     }
 
-    pub fn assign_if(cond: Expression, reg: String, expr: Expression) -> Instruction {
+    pub fn assign_if(cond: Expression, reg: Register, expr: Expression) -> Instruction {
         Instruction::new(Operation::ConditionalAssignment { cond, reg, expr })
     }
 
-    pub fn load(reg: String, addr: Expression) -> Instruction {
+    pub fn load(reg: Register, addr: Expression) -> Instruction {
         Instruction::new(Operation::Load { reg, addr })
     }
 
-    pub fn store(reg: String, addr: Expression) -> Instruction {
+    pub fn store(reg: Register, addr: Expression) -> Instruction {
         Instruction::new(Operation::Store { reg, addr })
     }
 
@@ -149,7 +160,7 @@ impl Instruction {
         Instruction::new(Operation::Jump { target })
     }
 
-    pub fn branch_if_zero(reg: String, target: Target) -> Instruction {
+    pub fn branch_if_zero(reg: Register, target: Target) -> Instruction {
         Instruction::new(Operation::Branch {
             kind: BranchKind::IfZero,
             reg,

@@ -51,6 +51,10 @@ fn identifier(input: &str) -> IResult<&str, String> {
     )(input)
 }
 
+fn register(input: &str) -> IResult<&str, ir::Register> {
+    map(identifier, ir::Register::new)(input)
+}
+
 fn dec_num(input: &str) -> IResult<&str, u64> {
     map_res(digit1, FromStr::from_str)(input)
 }
@@ -69,7 +73,7 @@ fn number_literal(input: &str) -> IResult<&str, ir::Expression> {
 }
 
 fn register_ref(input: &str) -> IResult<&str, ir::Expression> {
-    map(identifier, ir::Expression::RegisterRef)(input)
+    map(register, ir::Expression::RegisterRef)(input)
 }
 
 fn unary_expression(input: &str) -> IResult<&str, ir::Expression> {
@@ -265,7 +269,7 @@ fn barrier_instruction(input: &str) -> IResult<&str, ir::Instruction> {
 fn assignment_instruction(input: &str) -> IResult<&str, ir::Instruction> {
     map(
         tuple((
-            preceded(space0, identifier),
+            preceded(space0, register),
             preceded(space0, tag("<-")),
             preceded(space0, expression),
         )),
@@ -279,7 +283,7 @@ fn conditional_assignment_instruction(input: &str) -> IResult<&str, ir::Instruct
             preceded(space0, tag("cmov")),
             preceded(space0, expression),
             preceded(space0, tag(",")),
-            preceded(space0, identifier),
+            preceded(space0, register),
             preceded(space0, tag("<-")),
             preceded(space0, expression),
         )),
@@ -291,7 +295,7 @@ fn load_instruction(input: &str) -> IResult<&str, ir::Instruction> {
     map(
         tuple((
             preceded(space0, tag("load")),
-            preceded(space0, identifier),
+            preceded(space0, register),
             preceded(space0, tag(",")),
             preceded(space0, expression),
         )),
@@ -303,7 +307,7 @@ fn store_instruction(input: &str) -> IResult<&str, ir::Instruction> {
     map(
         tuple((
             preceded(space0, tag("store")),
-            preceded(space0, identifier),
+            preceded(space0, register),
             preceded(space0, tag(",")),
             preceded(space0, expression),
         )),
@@ -322,7 +326,7 @@ fn branch_if_zero_instruction(input: &str) -> IResult<&str, ir::Instruction> {
     map(
         tuple((
             preceded(space0, tag("beqz")),
-            preceded(space0, identifier),
+            preceded(space0, register),
             preceded(space0, tag(",")),
             preceded(space0, target),
         )),
@@ -393,7 +397,10 @@ mod tests {
     fn parse_register_ref() {
         assert_eq!(
             super::expression("rax"),
-            Ok(("", super::ir::Expression::RegisterRef("rax".to_string())))
+            Ok((
+                "",
+                super::ir::Expression::RegisterRef(super::ir::Register::new("rax".to_string()))
+            ))
         );
     }
 
@@ -436,7 +443,7 @@ mod tests {
                         "",
                         super::ir::Expression::BinaryExpression {
                             lhs: Box::new(super::ir::Expression::NumberLiteral(42)),
-                            rhs: Box::new(super::ir::Expression::RegisterRef(String::from("x"))),
+                            rhs: Box::new(super::ir::Expression::RegisterRef(super::ir::Register::new("x".to_string()))),
                             op: op_type,
                         }
                     ))
@@ -479,7 +486,7 @@ mod tests {
                         "",
                         super::ir::Expression::BinaryExpression {
                             lhs: Box::new(super::ir::Expression::NumberLiteral(42)),
-                            rhs: Box::new(super::ir::Expression::RegisterRef(String::from("x"))),
+                            rhs: Box::new(super::ir::Expression::RegisterRef(super::ir::Register::new("x".to_string()))),
                             op: op_type,
                         }
                     ))
@@ -616,7 +623,7 @@ mod tests {
             Ok((
                 "",
                 super::ir::Instruction::assign(
-                    "x".to_string(),
+                    super::ir::Register::new("x".to_string()),
                     super::ir::Expression::NumberLiteral(42)
                 )
             ))
@@ -631,7 +638,7 @@ mod tests {
                 "",
                 super::ir::Instruction::assign_if(
                     super::ir::Expression::NumberLiteral(0),
-                    "x".to_string(),
+                    super::ir::Register::new("x".to_string()),
                     super::ir::Expression::NumberLiteral(42)
                 )
             ))
@@ -645,7 +652,7 @@ mod tests {
             Ok((
                 "",
                 super::ir::Instruction::load(
-                    "x".to_string(),
+                    super::ir::Register::new("x".to_string()),
                     super::ir::Expression::NumberLiteral(42)
                 )
             ))
@@ -659,7 +666,7 @@ mod tests {
             Ok((
                 "",
                 super::ir::Instruction::store(
-                    "x".to_string(),
+                    super::ir::Register::new("x".to_string()),
                     super::ir::Expression::NumberLiteral(42)
                 )
             ))
@@ -691,7 +698,7 @@ mod tests {
             Ok((
                 "",
                 super::ir::Instruction::branch_if_zero(
-                    "x".to_string(),
+                    super::ir::Register::new("x".to_string()),
                     super::ir::Target::Location(42)
                 )
             ))
@@ -701,7 +708,7 @@ mod tests {
             Ok((
                 "",
                 super::ir::Instruction::branch_if_zero(
-                    "x".to_string(),
+                    super::ir::Register::new("x".to_string()),
                     super::ir::Target::Label("lbl".to_string())
                 )
             ))
@@ -739,11 +746,11 @@ mod tests {
             super::parse_program("beqz x, 42\nstore x, 42"),
             Ok(super::ir::Program::new(vec![
                 super::ir::Instruction::branch_if_zero(
-                    "x".to_string(),
+                    super::ir::Register::new("x".to_string()),
                     super::ir::Target::Location(42)
                 ),
                 super::ir::Instruction::store(
-                    "x".to_string(),
+                    super::ir::Register::new("x".to_string()),
                     super::ir::Expression::NumberLiteral(42)
                 ),
             ]))
@@ -756,11 +763,11 @@ mod tests {
             super::parse_program("beqz x, 42\nstore x, 42"),
             Ok(super::ir::Program::new(vec![
                 super::ir::Instruction::branch_if_zero(
-                    "x".to_string(),
+                    super::ir::Register::new("x".to_string()),
                     super::ir::Target::Location(42)
                 ),
                 super::ir::Instruction::store(
-                    "x".to_string(),
+                    super::ir::Register::new("x".to_string()),
                     super::ir::Expression::NumberLiteral(42)
                 ),
             ]))
@@ -773,11 +780,11 @@ mod tests {
             super::parse_program("beqz x, 42\n\n\nstore x, 42"),
             Ok(super::ir::Program::new(vec![
                 super::ir::Instruction::branch_if_zero(
-                    "x".to_string(),
+                    super::ir::Register::new("x".to_string()),
                     super::ir::Target::Location(42)
                 ),
                 super::ir::Instruction::store(
-                    "x".to_string(),
+                    super::ir::Register::new("x".to_string()),
                     super::ir::Expression::NumberLiteral(42)
                 ),
             ]))
@@ -790,7 +797,7 @@ mod tests {
             super::parse_program("\nbeqz x, 42"),
             Ok(super::ir::Program::new(vec![
                 super::ir::Instruction::branch_if_zero(
-                    "x".to_string(),
+                    super::ir::Register::new("x".to_string()),
                     super::ir::Target::Location(42)
                 )
             ]))
@@ -803,7 +810,7 @@ mod tests {
             super::parse_program("beqz x, 42\n"),
             Ok(super::ir::Program::new(vec![
                 super::ir::Instruction::branch_if_zero(
-                    "x".to_string(),
+                    super::ir::Register::new("x".to_string()),
                     super::ir::Target::Location(42)
                 )
             ]))
@@ -816,11 +823,11 @@ mod tests {
             super::parse_program("   \tbeqz x, 42\t\n \n\n store x, 42  "),
             Ok(super::ir::Program::new(vec![
                 super::ir::Instruction::branch_if_zero(
-                    "x".to_string(),
+                    super::ir::Register::new("x".to_string()),
                     super::ir::Target::Location(42)
                 ),
                 super::ir::Instruction::store(
-                    "x".to_string(),
+                    super::ir::Register::new("x".to_string()),
                     super::ir::Expression::NumberLiteral(42)
                 ),
             ]))
@@ -840,33 +847,45 @@ mod tests {
             super::parse_program(src),
             Ok(super::ir::Program::new(vec![
                 super::ir::Instruction::assign(
-                    "cond".to_string(),
+                    super::ir::Register::new("cond".to_string()),
                     super::ir::Expression::BinaryExpression {
                         op: super::ir::BinaryOperator::SLt,
-                        lhs: Box::new(super::ir::Expression::RegisterRef("x".to_string())),
-                        rhs: Box::new(super::ir::Expression::RegisterRef("array1_len".to_string())),
+                        lhs: Box::new(super::ir::Expression::RegisterRef(
+                            super::ir::Register::new("x".to_string())
+                        )),
+                        rhs: Box::new(super::ir::Expression::RegisterRef(
+                            super::ir::Register::new("array1_len".to_string())
+                        )),
                     }
                 ),
                 super::ir::Instruction::branch_if_zero(
-                    "cond".to_string(),
+                    super::ir::Register::new("cond".to_string()),
                     super::ir::Target::Location(5)
                 ),
                 super::ir::Instruction::load(
-                    "v".to_string(),
+                    super::ir::Register::new("v".to_string()),
                     super::ir::Expression::BinaryExpression {
                         op: super::ir::BinaryOperator::Add,
-                        lhs: Box::new(super::ir::Expression::RegisterRef("array1".to_string())),
-                        rhs: Box::new(super::ir::Expression::RegisterRef("x".to_string())),
+                        lhs: Box::new(super::ir::Expression::RegisterRef(
+                            super::ir::Register::new("array1".to_string())
+                        )),
+                        rhs: Box::new(super::ir::Expression::RegisterRef(
+                            super::ir::Register::new("x".to_string())
+                        )),
                     }
                 ),
                 super::ir::Instruction::load(
-                    "tmp".to_string(),
+                    super::ir::Register::new("tmp".to_string()),
                     super::ir::Expression::BinaryExpression {
                         op: super::ir::BinaryOperator::Add,
-                        lhs: Box::new(super::ir::Expression::RegisterRef("array2".to_string())),
+                        lhs: Box::new(super::ir::Expression::RegisterRef(
+                            super::ir::Register::new("array2".to_string())
+                        )),
                         rhs: Box::new(super::ir::Expression::BinaryExpression {
                             op: super::ir::BinaryOperator::Shl,
-                            lhs: Box::new(super::ir::Expression::RegisterRef("v".to_string())),
+                            lhs: Box::new(super::ir::Expression::RegisterRef(
+                                super::ir::Register::new("v".to_string())
+                            )),
                             rhs: Box::new(super::ir::Expression::NumberLiteral(8)),
                         }),
                     }
@@ -887,37 +906,49 @@ mod tests {
         "#;
 
         let mut labeled_load = super::ir::Instruction::load(
-            "v".to_string(),
+            super::ir::Register::new("v".to_string()),
             super::ir::Expression::BinaryExpression {
                 op: super::ir::BinaryOperator::Add,
-                lhs: Box::new(super::ir::Expression::RegisterRef("array1".to_string())),
-                rhs: Box::new(super::ir::Expression::RegisterRef("x".to_string())),
+                lhs: Box::new(super::ir::Expression::RegisterRef(
+                    super::ir::Register::new("array1".to_string()),
+                )),
+                rhs: Box::new(super::ir::Expression::RegisterRef(
+                    super::ir::Register::new("x".to_string()),
+                )),
             },
         );
         labeled_load.set_label("Then".to_string());
 
         let mut program = super::ir::Program::new(vec![
             super::ir::Instruction::assign(
-                "cond".to_string(),
+                super::ir::Register::new("cond".to_string()),
                 super::ir::Expression::BinaryExpression {
                     op: super::ir::BinaryOperator::SLt,
-                    lhs: Box::new(super::ir::Expression::RegisterRef("x".to_string())),
-                    rhs: Box::new(super::ir::Expression::RegisterRef("array1_len".to_string())),
+                    lhs: Box::new(super::ir::Expression::RegisterRef(
+                        super::ir::Register::new("x".to_string()),
+                    )),
+                    rhs: Box::new(super::ir::Expression::RegisterRef(
+                        super::ir::Register::new("array1_len".to_string()),
+                    )),
                 },
             ),
             super::ir::Instruction::branch_if_zero(
-                "cond".to_string(),
+                super::ir::Register::new("cond".to_string()),
                 super::ir::Target::Label("EndIf".to_string()),
             ),
             labeled_load,
             super::ir::Instruction::load(
-                "tmp".to_string(),
+                super::ir::Register::new("tmp".to_string()),
                 super::ir::Expression::BinaryExpression {
                     op: super::ir::BinaryOperator::Add,
-                    lhs: Box::new(super::ir::Expression::RegisterRef("array2".to_string())),
+                    lhs: Box::new(super::ir::Expression::RegisterRef(
+                        super::ir::Register::new("array2".to_string()),
+                    )),
                     rhs: Box::new(super::ir::Expression::BinaryExpression {
                         op: super::ir::BinaryOperator::Shl,
-                        lhs: Box::new(super::ir::Expression::RegisterRef("v".to_string())),
+                        lhs: Box::new(super::ir::Expression::RegisterRef(
+                            super::ir::Register::new("v".to_string()),
+                        )),
                         rhs: Box::new(super::ir::Expression::NumberLiteral(8)),
                     }),
                 },
