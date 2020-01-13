@@ -246,16 +246,11 @@ fn label(input: &str) -> IResult<&str, String> {
     terminated(identifier, tag(":"))(input)
 }
 
-fn target_location(input: &str) -> IResult<&str, ir::Target> {
-    map(identifier, ir::Target::Label)(input)
-}
-
-fn target_label(input: &str) -> IResult<&str, ir::Target> {
-    map(numeric, ir::Target::Location)(input)
-}
-
 fn target(input: &str) -> IResult<&str, ir::Target> {
-    alt((target_location, target_label))(input)
+    alt((
+        map(numeric, ir::Target::Location),
+        map(identifier, ir::Target::Label),
+    ))(input)
 }
 
 fn skip_instruction(input: &str) -> IResult<&str, ir::Instruction> {
