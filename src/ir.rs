@@ -70,20 +70,20 @@ pub enum Operation {
     Barrier,
     Assignment {
         reg: String,
-        expr: Box<Expression>,
+        expr: Expression,
     },
     ConditionalAssignment {
         reg: String,
-        expr: Box<Expression>,
-        cond: Box<Expression>,
+        expr: Expression,
+        cond: Expression,
     },
     Load {
         reg: String,
-        addr: Box<Expression>,
+        addr: Expression,
     },
     Store {
         reg: String,
-        addr: Box<Expression>,
+        addr: Expression,
     },
     Jump {
         target: Target,
@@ -129,19 +129,19 @@ impl Instruction {
         Instruction::new(Operation::Barrier)
     }
 
-    pub fn assign(reg: String, expr: Box<Expression>) -> Instruction {
+    pub fn assign(reg: String, expr: Expression) -> Instruction {
         Instruction::new(Operation::Assignment { reg, expr })
     }
 
-    pub fn assign_if(cond: Box<Expression>, reg: String, expr: Box<Expression>) -> Instruction {
+    pub fn assign_if(cond: Expression, reg: String, expr: Expression) -> Instruction {
         Instruction::new(Operation::ConditionalAssignment { cond, reg, expr })
     }
 
-    pub fn load(reg: String, addr: Box<Expression>) -> Instruction {
+    pub fn load(reg: String, addr: Expression) -> Instruction {
         Instruction::new(Operation::Load { reg, addr })
     }
 
-    pub fn store(reg: String, addr: Box<Expression>) -> Instruction {
+    pub fn store(reg: String, addr: Expression) -> Instruction {
         Instruction::new(Operation::Store { reg, addr })
     }
 
