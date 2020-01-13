@@ -104,7 +104,7 @@ pub struct Instruction {
 impl Instruction {
     pub fn new(operation: Operation) -> Instruction {
         Instruction {
-            operation: operation,
+            operation,
             label: None,
         }
     }
@@ -130,62 +130,49 @@ impl Instruction {
     }
 
     pub fn assign(reg: String, expr: Box<Expression>) -> Instruction {
-        Instruction::new(Operation::Assignment {
-            reg: reg,
-            expr: expr,
-        })
+        Instruction::new(Operation::Assignment { reg, expr })
     }
 
     pub fn assign_if(cond: Box<Expression>, reg: String, expr: Box<Expression>) -> Instruction {
-        Instruction::new(Operation::ConditionalAssignment {
-            cond: cond,
-            reg: reg,
-            expr: expr,
-        })
+        Instruction::new(Operation::ConditionalAssignment { cond, reg, expr })
     }
 
     pub fn load(reg: String, addr: Box<Expression>) -> Instruction {
-        Instruction::new(Operation::Load {
-            reg: reg,
-            addr: addr,
-        })
+        Instruction::new(Operation::Load { reg, addr })
     }
 
     pub fn store(reg: String, addr: Box<Expression>) -> Instruction {
-        Instruction::new(Operation::Store {
-            reg: reg,
-            addr: addr,
-        })
+        Instruction::new(Operation::Store { reg, addr })
     }
 
     pub fn jump(target: Target) -> Instruction {
-        Instruction::new(Operation::Jump { target: target })
+        Instruction::new(Operation::Jump { target })
     }
 
     pub fn branch_if_zero(reg: String, target: Target) -> Instruction {
         Instruction::new(Operation::Branch {
             kind: BranchKind::IfZero,
-            reg: reg,
-            target: target,
+            reg,
+            target,
         })
     }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Program {
-    instructions: Vec<Box<Instruction>>,
+    instructions: Vec<Instruction>,
     end_label: Option<String>,
 }
 
 impl Program {
-    pub fn new(instructions: Vec<Box<Instruction>>) -> Program {
+    pub fn new(instructions: Vec<Instruction>) -> Program {
         Program {
-            instructions: instructions,
+            instructions,
             end_label: None,
         }
     }
 
-    pub fn instructions(&self) -> &Vec<Box<Instruction>> {
+    pub fn instructions(&self) -> &Vec<Instruction> {
         &self.instructions
     }
 
