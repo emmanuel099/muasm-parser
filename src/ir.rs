@@ -7,6 +7,10 @@ impl Register {
     pub fn new(name: String) -> Register {
         Register { name }
     }
+
+    pub fn name(&self) -> &String {
+        &self.name
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
