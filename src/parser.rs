@@ -10,7 +10,7 @@ use nom::{
 };
 use std::str::FromStr;
 
-pub fn parse_program(input: &str) -> Result<ir::Program, &str> {
+pub fn parse_program(input: &str) -> Result<ir::Program, &'static str> {
     let result = all_consuming(tuple((
         instructions,
         opt(preceded(multispace0, label)),
