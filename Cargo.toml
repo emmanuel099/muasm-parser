@@ -5,7 +5,10 @@ authors = ["Emmanuel Pescosta <emmanuelpescosta099@gmail.com>"]
 edition = "2018"
 description = "µASM Parser"
 license = "Apache-2.0"
+repository = "https://github.com/emmanuel099/muasm-parser"
 readme = "README.md"
+keywords = ["parser", "muasm", "parsing"]
+categories = ["parsing"]
 
 [dependencies]
 nom = "5.1.0"
