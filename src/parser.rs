@@ -384,7 +384,7 @@ mod tests {
     #[test]
     fn parse_hex_num() {
         assert_eq!(super::hex_num("0x0"), Ok(("", 0)));
-        assert_eq!(super::hex_num("0xC0ffee"), Ok(("", 12648430)));
+        assert_eq!(super::hex_num("0xC0ffee"), Ok(("", 12_648_430)));
     }
 
     #[test]
