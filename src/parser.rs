@@ -2,9 +2,9 @@ use crate::ir;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while, take_while1},
-    character::complete::{digit1, hex_digit1, multispace0, space0},
+    character::complete::{digit1, hex_digit1, multispace1, not_line_ending, space0},
     combinator::{all_consuming, map, map_res, opt, value},
-    multi::fold_many0,
+    multi::{fold_many0, many0},
     sequence::{preceded, terminated, tuple},
     IResult,
 };
@@ -13,8 +13,8 @@ use std::str::FromStr;
 pub fn parse_program(input: &str) -> Result<ir::Program, &'static str> {
     let result = all_consuming(tuple((
         instructions,
-        opt(preceded(multispace0, label)),
-        multispace0,
+        opt(preceded(whitespaces_or_comment, label)),
+        whitespaces_or_comment,
     )))(input);
     match result {
         Ok((_, (instructions, opt_end_label, _))) => {
@@ -30,13 +30,24 @@ pub fn parse_program(input: &str) -> Result<ir::Program, &'static str> {
 
 fn instructions(input: &str) -> IResult<&str, Vec<ir::Instruction>> {
     fold_many0(
-        preceded(multispace0, alt((labeled_instruction, instruction))),
+        preceded(
+            whitespaces_or_comment,
+            alt((labeled_instruction, instruction)),
+        ),
         Vec::new(),
         |mut instructions: Vec<_>, inst| {
             instructions.push(inst);
             instructions
         },
     )(input)
+}
+
+fn comment(input: &str) -> IResult<&str, &str> {
+    preceded(tag("%"), not_line_ending)(input)
+}
+
+fn whitespaces_or_comment(input: &str) -> IResult<&str, Vec<&str>> {
+    many0(alt((multispace1, comment)))(input)
 }
 
 fn identifier(input: &str) -> IResult<&str, String> {
@@ -344,7 +355,7 @@ fn instruction(input: &str) -> IResult<&str, ir::Instruction> {
 
 fn labeled_instruction(input: &str) -> IResult<&str, ir::Instruction> {
     map(
-        tuple((label, preceded(multispace0, instruction))),
+        tuple((label, preceded(whitespaces_or_comment, instruction))),
         |(lbl, mut inst)| {
             inst.set_label(lbl);
             inst
@@ -962,5 +973,56 @@ mod tests {
         "#;
 
         assert_eq!(super::parse_program(src), Err("Failed to parse program!"));
+    }
+
+    #[test]
+    fn parse_empty_program() {
+        assert_eq!(
+            super::parse_program(""),
+            Ok(super::ir::Program::new(vec![]))
+        );
+    }
+
+    #[test]
+    fn parse_program_with_single_comment() {
+        assert_eq!(
+            super::parse_program("% comment"),
+            Ok(super::ir::Program::new(vec![]))
+        );
+    }
+
+    #[test]
+    fn parse_test_program_with_comments() {
+        let src = r#"
+            % test program
+            % start
+            c <- x < y
+            beqz c, 3 % jump to end
+            skip
+            % end
+        "#;
+
+        assert_eq!(
+            super::parse_program(src),
+            Ok(super::ir::Program::new(vec![
+                super::ir::Instruction::assign(
+                    super::ir::Register::new("c".to_string()),
+                    super::ir::Expression::BinaryExpression {
+                        op: super::ir::BinaryOperator::SLt,
+                        lhs: Box::new(super::ir::Expression::RegisterRef(
+                            super::ir::Register::new("x".to_string())
+                        )),
+                        rhs: Box::new(super::ir::Expression::RegisterRef(
+                            super::ir::Register::new("y".to_string())
+                        )),
+                    }
+                ),
+                super::ir::Instruction::branch_if_zero(
+                    super::ir::Register::new("c".to_string()),
+                    super::ir::Target::Location(3)
+                ),
+                super::ir::Instruction::skip(),
+            ]))
+        );
     }
 }
