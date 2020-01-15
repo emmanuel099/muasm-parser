@@ -1,3 +1,6 @@
+use fmt::Display;
+use std::fmt;
+
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Register {
     name: String,
@@ -15,7 +18,13 @@ impl Register {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+impl fmt::Display for Register {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "%{}", self.name)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Display)]
 pub enum UnaryOperator {
     Neg,
     Not,
@@ -23,7 +32,7 @@ pub enum UnaryOperator {
     ZExt,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Display)]
 pub enum BinaryOperator {
     Add,
     Sub,
@@ -70,7 +79,21 @@ pub enum Expression {
     },
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+impl fmt::Display for Expression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::NumberLiteral(num) => write!(f, "{}", num),
+            Self::RegisterRef(reg) => write!(f, "{}", reg),
+            Self::Unary { op, expr } => write!(f, "({} {})", op, expr),
+            Self::Binary { op, lhs, rhs } => write!(f, "({} {} {})", op, lhs, rhs),
+            Self::Conditional { cond, then, r#else } => {
+                write!(f, "(Ite {} {} {})", cond, then, r#else)
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Display)]
 pub enum BranchKind {
     IfZero,
 }
@@ -79,6 +102,15 @@ pub enum BranchKind {
 pub enum Target {
     Location(u64),
     Label(String),
+}
+
+impl fmt::Display for Target {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Location(num) => write!(f, "{}", num),
+            Self::Label(lbl) => write!(f, "@{}", lbl),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -110,6 +142,23 @@ pub enum Operation {
         reg: Register,
         target: Target,
     },
+}
+
+impl fmt::Display for Operation {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Skip => write!(f, "skip"),
+            Self::Barrier => write!(f, "barrier"),
+            Self::Assignment { reg, expr } => write!(f, "{} = {}", reg, expr),
+            Self::ConditionalAssignment { reg, expr, cond } => {
+                write!(f, "{} = {} if {}", reg, expr, cond)
+            }
+            Self::Load { reg, addr } => write!(f, "load {}, {}", reg, addr),
+            Self::Store { reg, addr } => write!(f, "store {}, {}", reg, addr),
+            Self::Jump { target } => write!(f, "jump {}", target),
+            Self::Branch { kind, reg, target } => write!(f, "branch {} {}, {}", kind, reg, target),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -186,6 +235,16 @@ impl Instruction {
     }
 }
 
+impl fmt::Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(lbl) = &self.label {
+            write!(f, "{}: {}", lbl, self.operation)
+        } else {
+            write!(f, "{}", self.operation)
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Program {
     instructions: Vec<Instruction>,
@@ -213,5 +272,20 @@ impl Program {
     #[must_use]
     pub fn end_label(&self) -> &Option<String> {
         &self.end_label
+    }
+}
+
+impl fmt::Display for Program {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let formatted_instructions = self
+            .instructions
+            .iter()
+            .fold(String::new(), |acc, inst| format!("{}{}\n", acc, inst));
+
+        if let Some(lbl) = &self.end_label {
+            write!(f, "{}{}:", formatted_instructions, lbl)
+        } else {
+            write!(f, "{}", formatted_instructions)
+        }
     }
 }
