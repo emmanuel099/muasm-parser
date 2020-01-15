@@ -97,7 +97,7 @@ fn unary_expression(input: &str) -> IResult<&str, ir::Expression> {
             preceded(space0, operator),
             preceded(space0, simple_expression),
         )),
-        |(op, expr)| ir::Expression::UnaryExpression {
+        |(op, expr)| ir::Expression::Unary {
             op,
             expr: Box::new(expr),
         },
@@ -113,7 +113,7 @@ macro_rules! binary_expression {
                     preceded(space0, $operator),
                     preceded(space0, $operand),
                 )),
-                |(lhs, op, rhs)| ir::Expression::BinaryExpression {
+                |(lhs, op, rhs)| ir::Expression::Binary {
                     op,
                     lhs: Box::new(lhs),
                     rhs: Box::new(rhs),
@@ -194,7 +194,7 @@ fn binary_function(input: &str) -> IResult<&str, ir::Expression> {
             preceded(space0, expression),
             preceded(space0, tag(")")),
         )),
-        |(op, _, lhs, _, rhs, _)| ir::Expression::BinaryExpression {
+        |(op, _, lhs, _, rhs, _)| ir::Expression::Binary {
             op,
             lhs: Box::new(lhs),
             rhs: Box::new(rhs),
@@ -224,7 +224,7 @@ fn conditional_expression(input: &str) -> IResult<&str, ir::Expression> {
             preceded(space0, expression),
             preceded(space0, tag(")")),
         )),
-        |(_, cond, _, then, _, r#else, _)| ir::Expression::ConditionalExpression {
+        |(_, cond, _, then, _, r#else, _)| ir::Expression::Conditional {
             cond: Box::new(cond),
             then: Box::new(then),
             r#else: Box::new(r#else),
@@ -421,7 +421,7 @@ mod tests {
                     super::expression(&input),
                     Ok((
                         "",
-                        super::ir::Expression::UnaryExpression {
+                        super::ir::Expression::Unary {
                             expr: Box::new(super::ir::Expression::NumberLiteral(42)),
                             op: op_type,
                         }
@@ -447,7 +447,7 @@ mod tests {
                     super::expression(&input),
                     Ok((
                         "",
-                        super::ir::Expression::BinaryExpression {
+                        super::ir::Expression::Binary {
                             lhs: Box::new(super::ir::Expression::NumberLiteral(42)),
                             rhs: Box::new(super::ir::Expression::RegisterRef(super::ir::Register::new("x".to_string()))),
                             op: op_type,
@@ -490,7 +490,7 @@ mod tests {
                     super::expression(&input),
                     Ok((
                         "",
-                        super::ir::Expression::BinaryExpression {
+                        super::ir::Expression::Binary {
                             lhs: Box::new(super::ir::Expression::NumberLiteral(42)),
                             rhs: Box::new(super::ir::Expression::RegisterRef(super::ir::Register::new("x".to_string()))),
                             op: op_type,
@@ -528,7 +528,7 @@ mod tests {
             super::expression("ite(1, 2, 3)"),
             Ok((
                 "",
-                super::ir::Expression::ConditionalExpression {
+                super::ir::Expression::Conditional {
                     cond: Box::new(super::ir::Expression::NumberLiteral(1)),
                     then: Box::new(super::ir::Expression::NumberLiteral(2)),
                     r#else: Box::new(super::ir::Expression::NumberLiteral(3)),
@@ -543,13 +543,13 @@ mod tests {
             super::expression("1 << 2 * 3 << 4"),
             Ok((
                 "",
-                super::ir::Expression::BinaryExpression {
-                    lhs: Box::new(super::ir::Expression::BinaryExpression {
+                super::ir::Expression::Binary {
+                    lhs: Box::new(super::ir::Expression::Binary {
                         lhs: Box::new(super::ir::Expression::NumberLiteral(1)),
                         rhs: Box::new(super::ir::Expression::NumberLiteral(2)),
                         op: super::ir::BinaryOperator::Shl,
                     }),
-                    rhs: Box::new(super::ir::Expression::BinaryExpression {
+                    rhs: Box::new(super::ir::Expression::Binary {
                         lhs: Box::new(super::ir::Expression::NumberLiteral(3)),
                         rhs: Box::new(super::ir::Expression::NumberLiteral(4)),
                         op: super::ir::BinaryOperator::Shl,
@@ -566,13 +566,13 @@ mod tests {
             super::expression("1 * 2 + 3 * 4"),
             Ok((
                 "",
-                super::ir::Expression::BinaryExpression {
-                    lhs: Box::new(super::ir::Expression::BinaryExpression {
+                super::ir::Expression::Binary {
+                    lhs: Box::new(super::ir::Expression::Binary {
                         lhs: Box::new(super::ir::Expression::NumberLiteral(1)),
                         rhs: Box::new(super::ir::Expression::NumberLiteral(2)),
                         op: super::ir::BinaryOperator::Mul,
                     }),
-                    rhs: Box::new(super::ir::Expression::BinaryExpression {
+                    rhs: Box::new(super::ir::Expression::Binary {
                         lhs: Box::new(super::ir::Expression::NumberLiteral(3)),
                         rhs: Box::new(super::ir::Expression::NumberLiteral(4)),
                         op: super::ir::BinaryOperator::Mul,
@@ -589,13 +589,13 @@ mod tests {
             super::expression("1 + 2 = 3 + 4"),
             Ok((
                 "",
-                super::ir::Expression::BinaryExpression {
-                    lhs: Box::new(super::ir::Expression::BinaryExpression {
+                super::ir::Expression::Binary {
+                    lhs: Box::new(super::ir::Expression::Binary {
                         lhs: Box::new(super::ir::Expression::NumberLiteral(1)),
                         rhs: Box::new(super::ir::Expression::NumberLiteral(2)),
                         op: super::ir::BinaryOperator::Add,
                     }),
-                    rhs: Box::new(super::ir::Expression::BinaryExpression {
+                    rhs: Box::new(super::ir::Expression::Binary {
                         lhs: Box::new(super::ir::Expression::NumberLiteral(3)),
                         rhs: Box::new(super::ir::Expression::NumberLiteral(4)),
                         op: super::ir::BinaryOperator::Add,
@@ -854,7 +854,7 @@ mod tests {
             Ok(super::ir::Program::new(vec![
                 super::ir::Instruction::assign(
                     super::ir::Register::new("cond".to_string()),
-                    super::ir::Expression::BinaryExpression {
+                    super::ir::Expression::Binary {
                         op: super::ir::BinaryOperator::SLt,
                         lhs: Box::new(super::ir::Expression::RegisterRef(
                             super::ir::Register::new("x".to_string())
@@ -870,7 +870,7 @@ mod tests {
                 ),
                 super::ir::Instruction::load(
                     super::ir::Register::new("v".to_string()),
-                    super::ir::Expression::BinaryExpression {
+                    super::ir::Expression::Binary {
                         op: super::ir::BinaryOperator::Add,
                         lhs: Box::new(super::ir::Expression::RegisterRef(
                             super::ir::Register::new("array1".to_string())
@@ -882,12 +882,12 @@ mod tests {
                 ),
                 super::ir::Instruction::load(
                     super::ir::Register::new("tmp".to_string()),
-                    super::ir::Expression::BinaryExpression {
+                    super::ir::Expression::Binary {
                         op: super::ir::BinaryOperator::Add,
                         lhs: Box::new(super::ir::Expression::RegisterRef(
                             super::ir::Register::new("array2".to_string())
                         )),
-                        rhs: Box::new(super::ir::Expression::BinaryExpression {
+                        rhs: Box::new(super::ir::Expression::Binary {
                             op: super::ir::BinaryOperator::Shl,
                             lhs: Box::new(super::ir::Expression::RegisterRef(
                                 super::ir::Register::new("v".to_string())
@@ -913,7 +913,7 @@ mod tests {
 
         let mut labeled_load = super::ir::Instruction::load(
             super::ir::Register::new("v".to_string()),
-            super::ir::Expression::BinaryExpression {
+            super::ir::Expression::Binary {
                 op: super::ir::BinaryOperator::Add,
                 lhs: Box::new(super::ir::Expression::RegisterRef(
                     super::ir::Register::new("array1".to_string()),
@@ -928,7 +928,7 @@ mod tests {
         let mut program = super::ir::Program::new(vec![
             super::ir::Instruction::assign(
                 super::ir::Register::new("cond".to_string()),
-                super::ir::Expression::BinaryExpression {
+                super::ir::Expression::Binary {
                     op: super::ir::BinaryOperator::SLt,
                     lhs: Box::new(super::ir::Expression::RegisterRef(
                         super::ir::Register::new("x".to_string()),
@@ -945,12 +945,12 @@ mod tests {
             labeled_load,
             super::ir::Instruction::load(
                 super::ir::Register::new("tmp".to_string()),
-                super::ir::Expression::BinaryExpression {
+                super::ir::Expression::Binary {
                     op: super::ir::BinaryOperator::Add,
                     lhs: Box::new(super::ir::Expression::RegisterRef(
                         super::ir::Register::new("array2".to_string()),
                     )),
-                    rhs: Box::new(super::ir::Expression::BinaryExpression {
+                    rhs: Box::new(super::ir::Expression::Binary {
                         op: super::ir::BinaryOperator::Shl,
                         lhs: Box::new(super::ir::Expression::RegisterRef(
                             super::ir::Register::new("v".to_string()),
@@ -1007,7 +1007,7 @@ mod tests {
             Ok(super::ir::Program::new(vec![
                 super::ir::Instruction::assign(
                     super::ir::Register::new("c".to_string()),
-                    super::ir::Expression::BinaryExpression {
+                    super::ir::Expression::Binary {
                         op: super::ir::BinaryOperator::SLt,
                         lhs: Box::new(super::ir::Expression::RegisterRef(
                             super::ir::Register::new("x".to_string())

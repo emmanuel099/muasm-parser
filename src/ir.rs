@@ -4,10 +4,12 @@ pub struct Register {
 }
 
 impl Register {
-    pub fn new(name: String) -> Register {
-        Register { name }
+    #[must_use]
+    pub fn new(name: String) -> Self {
+        Self { name }
     }
 
+    #[must_use]
     pub fn name(&self) -> &String {
         &self.name
     }
@@ -52,16 +54,16 @@ pub enum BinaryOperator {
 pub enum Expression {
     NumberLiteral(u64),
     RegisterRef(Register),
-    UnaryExpression {
+    Unary {
         op: UnaryOperator,
         expr: Box<Expression>,
     },
-    BinaryExpression {
+    Binary {
         op: BinaryOperator,
         lhs: Box<Expression>,
         rhs: Box<Expression>,
     },
-    ConditionalExpression {
+    Conditional {
         cond: Box<Expression>,
         then: Box<Expression>,
         r#else: Box<Expression>,
@@ -117,13 +119,15 @@ pub struct Instruction {
 }
 
 impl Instruction {
-    pub fn new(operation: Operation) -> Instruction {
-        Instruction {
+    #[must_use]
+    pub fn new(operation: Operation) -> Self {
+        Self {
             operation,
             label: None,
         }
     }
 
+    #[must_use]
     pub fn operation(&self) -> &Operation {
         &self.operation
     }
@@ -132,40 +136,49 @@ impl Instruction {
         self.label = Some(label);
     }
 
+    #[must_use]
     pub fn label(&self) -> &Option<String> {
         &self.label
     }
 
-    pub fn skip() -> Instruction {
-        Instruction::new(Operation::Skip)
+    #[must_use]
+    pub fn skip() -> Self {
+        Self::new(Operation::Skip)
     }
 
-    pub fn barrier() -> Instruction {
-        Instruction::new(Operation::Barrier)
+    #[must_use]
+    pub fn barrier() -> Self {
+        Self::new(Operation::Barrier)
     }
 
-    pub fn assign(reg: Register, expr: Expression) -> Instruction {
-        Instruction::new(Operation::Assignment { reg, expr })
+    #[must_use]
+    pub fn assign(reg: Register, expr: Expression) -> Self {
+        Self::new(Operation::Assignment { reg, expr })
     }
 
-    pub fn assign_if(cond: Expression, reg: Register, expr: Expression) -> Instruction {
-        Instruction::new(Operation::ConditionalAssignment { cond, reg, expr })
+    #[must_use]
+    pub fn assign_if(cond: Expression, reg: Register, expr: Expression) -> Self {
+        Self::new(Operation::ConditionalAssignment { cond, reg, expr })
     }
 
-    pub fn load(reg: Register, addr: Expression) -> Instruction {
-        Instruction::new(Operation::Load { reg, addr })
+    #[must_use]
+    pub fn load(reg: Register, addr: Expression) -> Self {
+        Self::new(Operation::Load { reg, addr })
     }
 
-    pub fn store(reg: Register, addr: Expression) -> Instruction {
-        Instruction::new(Operation::Store { reg, addr })
+    #[must_use]
+    pub fn store(reg: Register, addr: Expression) -> Self {
+        Self::new(Operation::Store { reg, addr })
     }
 
-    pub fn jump(target: Target) -> Instruction {
-        Instruction::new(Operation::Jump { target })
+    #[must_use]
+    pub fn jump(target: Target) -> Self {
+        Self::new(Operation::Jump { target })
     }
 
-    pub fn branch_if_zero(reg: Register, target: Target) -> Instruction {
-        Instruction::new(Operation::Branch {
+    #[must_use]
+    pub fn branch_if_zero(reg: Register, target: Target) -> Self {
+        Self::new(Operation::Branch {
             kind: BranchKind::IfZero,
             reg,
             target,
@@ -180,13 +193,15 @@ pub struct Program {
 }
 
 impl Program {
-    pub fn new(instructions: Vec<Instruction>) -> Program {
-        Program {
+    #[must_use]
+    pub fn new(instructions: Vec<Instruction>) -> Self {
+        Self {
             instructions,
             end_label: None,
         }
     }
 
+    #[must_use]
     pub fn instructions(&self) -> &Vec<Instruction> {
         &self.instructions
     }
@@ -195,6 +210,7 @@ impl Program {
         self.end_label = Some(label);
     }
 
+    #[must_use]
     pub fn end_label(&self) -> &Option<String> {
         &self.end_label
     }
