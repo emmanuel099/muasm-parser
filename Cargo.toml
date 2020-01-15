@@ -1,5 +1,5 @@
 [package]
-name = "muasm-parser"
+name = "muasm_parser"
 version = "0.1.0"
 authors = ["Emmanuel Pescosta <emmanuelpescosta099@gmail.com>"]
 edition = "2018"
