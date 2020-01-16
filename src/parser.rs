@@ -2,7 +2,7 @@ use crate::ir;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while, take_while1},
-    character::complete::{digit1, hex_digit1, multispace1, not_line_ending, space0},
+    character::complete::{char, digit1, hex_digit1, multispace1, not_line_ending, space0},
     combinator::{all_consuming, map, map_res, opt, value},
     multi::{fold_many0, many0},
     sequence::{preceded, terminated, tuple},
@@ -43,7 +43,7 @@ fn instructions(input: &str) -> IResult<&str, Vec<ir::Instruction>> {
 }
 
 fn comment(input: &str) -> IResult<&str, &str> {
-    preceded(tag("%"), not_line_ending)(input)
+    preceded(char('%'), not_line_ending)(input)
 }
 
 fn whitespaces_or_comment(input: &str) -> IResult<&str, Vec<&str>> {
@@ -89,8 +89,8 @@ fn register_ref(input: &str) -> IResult<&str, ir::Expression> {
 
 fn unary_expression(input: &str) -> IResult<&str, ir::Expression> {
     let operator = alt((
-        value(ir::UnaryOperator::Neg, tag("-")),
-        value(ir::UnaryOperator::Not, tag("~")),
+        value(ir::UnaryOperator::Neg, char('-')),
+        value(ir::UnaryOperator::Not, char('~')),
     ));
     map(
         tuple((
@@ -128,7 +128,7 @@ binary_expression!(
     alt((
         value(ir::BinaryOperator::And, tag("/\\")),
         value(ir::BinaryOperator::Or, tag("\\/")),
-        value(ir::BinaryOperator::Xor, tag("#")),
+        value(ir::BinaryOperator::Xor, char('#')),
         value(ir::BinaryOperator::Shl, tag("<<")),
         value(ir::BinaryOperator::AShr, tag(">>>")),
         value(ir::BinaryOperator::LShr, tag(">>")),
@@ -139,8 +139,8 @@ binary_expression!(
 binary_expression!(
     mul_div_expression,
     alt((
-        value(ir::BinaryOperator::Mul, tag("*")),
-        value(ir::BinaryOperator::UDiv, tag("/")),
+        value(ir::BinaryOperator::Mul, char('*')),
+        value(ir::BinaryOperator::UDiv, char('/')),
     )),
     alt((bitwise_expression, simple_expression))
 );
@@ -148,8 +148,8 @@ binary_expression!(
 binary_expression!(
     add_sub_expression,
     alt((
-        value(ir::BinaryOperator::Add, tag("+")),
-        value(ir::BinaryOperator::Sub, tag("-")),
+        value(ir::BinaryOperator::Add, char('+')),
+        value(ir::BinaryOperator::Sub, char('-')),
     )),
     alt((mul_div_expression, bitwise_expression, simple_expression))
 );
@@ -157,12 +157,12 @@ binary_expression!(
 binary_expression!(
     compare_expression,
     alt((
-        value(ir::BinaryOperator::r#Eq, tag("=")),
+        value(ir::BinaryOperator::r#Eq, char('=')),
         value(ir::BinaryOperator::Neq, tag("\\=")),
         value(ir::BinaryOperator::SLe, tag("<=")),
-        value(ir::BinaryOperator::SLt, tag("<")),
+        value(ir::BinaryOperator::SLt, char('<')),
         value(ir::BinaryOperator::SGe, tag(">=")),
-        value(ir::BinaryOperator::SGt, tag(">")),
+        value(ir::BinaryOperator::SGt, char('>')),
     )),
     alt((
         add_sub_expression,
@@ -188,11 +188,11 @@ fn binary_function(input: &str) -> IResult<&str, ir::Expression> {
     map(
         tuple((
             preceded(space0, function),
-            tag("("),
+            char('('),
             preceded(space0, expression),
-            preceded(space0, tag(",")),
+            preceded(space0, char(',')),
             preceded(space0, expression),
-            preceded(space0, tag(")")),
+            preceded(space0, char(')')),
         )),
         |(op, _, lhs, _, rhs, _)| ir::Expression::Binary {
             op,
@@ -205,9 +205,9 @@ fn binary_function(input: &str) -> IResult<&str, ir::Expression> {
 fn clasped_expression(input: &str) -> IResult<&str, ir::Expression> {
     map(
         tuple((
-            preceded(space0, tag("(")),
+            preceded(space0, char('(')),
             preceded(space0, expression),
-            preceded(space0, tag(")")),
+            preceded(space0, char(')')),
         )),
         |(_, e, _)| e,
     )(input)
@@ -218,11 +218,11 @@ fn conditional_expression(input: &str) -> IResult<&str, ir::Expression> {
         tuple((
             preceded(space0, tag("ite(")),
             preceded(space0, expression),
-            preceded(space0, tag(",")),
+            preceded(space0, char(',')),
             preceded(space0, expression),
-            preceded(space0, tag(",")),
+            preceded(space0, char(',')),
             preceded(space0, expression),
-            preceded(space0, tag(")")),
+            preceded(space0, char(')')),
         )),
         |(_, cond, _, then, _, r#else, _)| ir::Expression::Conditional {
             cond: Box::new(cond),
@@ -254,7 +254,7 @@ fn expression(input: &str) -> IResult<&str, ir::Expression> {
 }
 
 fn label(input: &str) -> IResult<&str, String> {
-    terminated(identifier, tag(":"))(input)
+    terminated(identifier, char(':'))(input)
 }
 
 fn target(input: &str) -> IResult<&str, ir::Target> {
@@ -288,7 +288,7 @@ fn conditional_assignment_instruction(input: &str) -> IResult<&str, ir::Instruct
         tuple((
             preceded(space0, tag("cmov")),
             preceded(space0, expression),
-            preceded(space0, tag(",")),
+            preceded(space0, char(',')),
             preceded(space0, register),
             preceded(space0, tag("<-")),
             preceded(space0, expression),
@@ -302,7 +302,7 @@ fn load_instruction(input: &str) -> IResult<&str, ir::Instruction> {
         tuple((
             preceded(space0, tag("load")),
             preceded(space0, register),
-            preceded(space0, tag(",")),
+            preceded(space0, char(',')),
             preceded(space0, expression),
         )),
         |(_, reg, _, addr)| ir::Instruction::load(reg, addr),
@@ -314,7 +314,7 @@ fn store_instruction(input: &str) -> IResult<&str, ir::Instruction> {
         tuple((
             preceded(space0, tag("store")),
             preceded(space0, register),
-            preceded(space0, tag(",")),
+            preceded(space0, char(',')),
             preceded(space0, expression),
         )),
         |(_, reg, _, addr)| ir::Instruction::store(reg, addr),
@@ -333,7 +333,7 @@ fn branch_if_zero_instruction(input: &str) -> IResult<&str, ir::Instruction> {
         tuple((
             preceded(space0, tag("beqz")),
             preceded(space0, register),
-            preceded(space0, tag(",")),
+            preceded(space0, char(',')),
             preceded(space0, target),
         )),
         |(_, reg, _, target)| ir::Instruction::branch_if_zero(reg, target),
