@@ -93,10 +93,7 @@ fn unary_expression(input: &str) -> IResult<&str, ir::Expression> {
         value(ir::UnaryOperator::Not, char('~')),
     ));
     map(
-        tuple((
-            preceded(space0, operator),
-            preceded(space0, simple_expression),
-        )),
+        tuple((operator, preceded(space0, simple_expression))),
         |(op, expr)| ir::Expression::Unary {
             op,
             expr: Box::new(expr),
@@ -109,7 +106,7 @@ macro_rules! binary_expression {
         fn $func(input: &str) -> IResult<&str, ir::Expression> {
             map(
                 tuple((
-                    preceded(space0, $operand),
+                    $operand,
                     preceded(space0, $operator),
                     preceded(space0, $operand),
                 )),
@@ -187,7 +184,7 @@ fn binary_function(input: &str) -> IResult<&str, ir::Expression> {
     ));
     map(
         tuple((
-            preceded(space0, function),
+            function,
             char('('),
             preceded(space0, expression),
             preceded(space0, char(',')),
@@ -205,7 +202,7 @@ fn binary_function(input: &str) -> IResult<&str, ir::Expression> {
 fn clasped_expression(input: &str) -> IResult<&str, ir::Expression> {
     map(
         tuple((
-            preceded(space0, char('(')),
+            char('('),
             preceded(space0, expression),
             preceded(space0, char(')')),
         )),
@@ -216,7 +213,7 @@ fn clasped_expression(input: &str) -> IResult<&str, ir::Expression> {
 fn conditional_expression(input: &str) -> IResult<&str, ir::Expression> {
     map(
         tuple((
-            preceded(space0, tag("ite(")),
+            tag("ite("),
             preceded(space0, expression),
             preceded(space0, char(',')),
             preceded(space0, expression),
@@ -275,7 +272,7 @@ fn barrier_instruction(input: &str) -> IResult<&str, ir::Instruction> {
 fn assignment_instruction(input: &str) -> IResult<&str, ir::Instruction> {
     map(
         tuple((
-            preceded(space0, register),
+            register,
             preceded(space0, tag("<-")),
             preceded(space0, expression),
         )),
@@ -286,7 +283,7 @@ fn assignment_instruction(input: &str) -> IResult<&str, ir::Instruction> {
 fn conditional_assignment_instruction(input: &str) -> IResult<&str, ir::Instruction> {
     map(
         tuple((
-            preceded(space0, tag("cmov")),
+            tag("cmov"),
             preceded(space0, expression),
             preceded(space0, char(',')),
             preceded(space0, register),
@@ -300,7 +297,7 @@ fn conditional_assignment_instruction(input: &str) -> IResult<&str, ir::Instruct
 fn load_instruction(input: &str) -> IResult<&str, ir::Instruction> {
     map(
         tuple((
-            preceded(space0, tag("load")),
+            tag("load"),
             preceded(space0, register),
             preceded(space0, char(',')),
             preceded(space0, expression),
@@ -312,7 +309,7 @@ fn load_instruction(input: &str) -> IResult<&str, ir::Instruction> {
 fn store_instruction(input: &str) -> IResult<&str, ir::Instruction> {
     map(
         tuple((
-            preceded(space0, tag("store")),
+            tag("store"),
             preceded(space0, register),
             preceded(space0, char(',')),
             preceded(space0, expression),
@@ -323,7 +320,7 @@ fn store_instruction(input: &str) -> IResult<&str, ir::Instruction> {
 
 fn jump_instruction(input: &str) -> IResult<&str, ir::Instruction> {
     map(
-        tuple((preceded(space0, tag("jmp")), preceded(space0, target))),
+        tuple((tag("jmp"), preceded(space0, target))),
         |(_, target)| ir::Instruction::jump(target),
     )(input)
 }
@@ -331,7 +328,7 @@ fn jump_instruction(input: &str) -> IResult<&str, ir::Instruction> {
 fn branch_if_zero_instruction(input: &str) -> IResult<&str, ir::Instruction> {
     map(
         tuple((
-            preceded(space0, tag("beqz")),
+            tag("beqz"),
             preceded(space0, register),
             preceded(space0, char(',')),
             preceded(space0, target),
