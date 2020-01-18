@@ -2,7 +2,7 @@ use crate::ir;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while, take_while1},
-    character::complete::{char, digit1, hex_digit1, multispace1, not_line_ending, space0},
+    character::complete::{char, digit1, hex_digit1, multispace1, not_line_ending, space0, space1},
     combinator::{all_consuming, map, map_res, opt, value},
     multi::{fold_many0, many0},
     sequence::{preceded, terminated, tuple},
@@ -284,7 +284,7 @@ fn conditional_assignment_instruction(input: &str) -> IResult<&str, ir::Instruct
     map(
         tuple((
             tag("cmov"),
-            preceded(space0, expression),
+            preceded(space1, expression),
             preceded(space0, char(',')),
             preceded(space0, register),
             preceded(space0, tag("<-")),
@@ -298,7 +298,7 @@ fn load_instruction(input: &str) -> IResult<&str, ir::Instruction> {
     map(
         tuple((
             tag("load"),
-            preceded(space0, register),
+            preceded(space1, register),
             preceded(space0, char(',')),
             preceded(space0, expression),
         )),
@@ -310,7 +310,7 @@ fn store_instruction(input: &str) -> IResult<&str, ir::Instruction> {
     map(
         tuple((
             tag("store"),
-            preceded(space0, register),
+            preceded(space1, register),
             preceded(space0, char(',')),
             preceded(space0, expression),
         )),
@@ -320,7 +320,7 @@ fn store_instruction(input: &str) -> IResult<&str, ir::Instruction> {
 
 fn jump_instruction(input: &str) -> IResult<&str, ir::Instruction> {
     map(
-        tuple((tag("jmp"), preceded(space0, target))),
+        tuple((tag("jmp"), preceded(space1, target))),
         |(_, target)| ir::Instruction::jump(target),
     )(input)
 }
@@ -329,7 +329,7 @@ fn branch_if_zero_instruction(input: &str) -> IResult<&str, ir::Instruction> {
     map(
         tuple((
             tag("beqz"),
-            preceded(space0, register),
+            preceded(space1, register),
             preceded(space0, char(',')),
             preceded(space0, target),
         )),
