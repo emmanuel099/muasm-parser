@@ -93,11 +93,6 @@ impl fmt::Display for Expression {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Display)]
-pub enum BranchKind {
-    IfZero,
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Target {
     Location(u64),
@@ -137,8 +132,7 @@ pub enum Operation {
     Jump {
         target: Target,
     },
-    Branch {
-        kind: BranchKind,
+    BranchIfZero {
         reg: Register,
         target: Target,
     },
@@ -156,7 +150,7 @@ impl fmt::Display for Operation {
             Self::Load { reg, addr } => write!(f, "load {}, {}", reg, addr),
             Self::Store { reg, addr } => write!(f, "store {}, {}", reg, addr),
             Self::Jump { target } => write!(f, "jump {}", target),
-            Self::Branch { kind, reg, target } => write!(f, "branch {} {}, {}", kind, reg, target),
+            Self::BranchIfZero { reg, target } => write!(f, "beqz {}, {}", reg, target),
         }
     }
 }
@@ -238,11 +232,7 @@ impl Instruction {
 
     #[must_use]
     pub fn branch_if_zero(reg: Register, target: Target) -> Self {
-        Self::new(Operation::Branch {
-            kind: BranchKind::IfZero,
-            reg,
-            target,
-        })
+        Self::new(Operation::BranchIfZero { reg, target })
     }
 
     #[must_use]
@@ -302,11 +292,7 @@ impl Instruction {
 
     #[must_use]
     pub fn is_branch_if_zero(&self) -> bool {
-        if let Operation::Branch {
-            kind: BranchKind::IfZero,
-            ..
-        } = self.operation
-        {
+        if let Operation::BranchIfZero { .. } = self.operation {
             true
         } else {
             false

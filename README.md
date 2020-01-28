@@ -36,8 +36,7 @@ Program {
             label: None,
         },
         Instruction {
-            operation: Branch {
-                kind: IfZero,
+            operation: BranchIfZero {
                 reg: Register { name: "cond" },
                 target: Label("EndIf"),
             },
