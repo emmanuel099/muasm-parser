@@ -316,30 +316,17 @@ impl fmt::Display for Instruction {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Program {
     instructions: Vec<Instruction>,
-    end_label: Option<String>,
 }
 
 impl Program {
     #[must_use]
     pub fn new(instructions: Vec<Instruction>) -> Self {
-        Self {
-            instructions,
-            end_label: None,
-        }
+        Self { instructions }
     }
 
     #[must_use]
     pub fn instructions(&self) -> &Vec<Instruction> {
         &self.instructions
-    }
-
-    pub fn set_end_label(&mut self, label: String) {
-        self.end_label = Some(label);
-    }
-
-    #[must_use]
-    pub fn end_label(&self) -> &Option<String> {
-        &self.end_label
     }
 }
 
@@ -349,11 +336,6 @@ impl fmt::Display for Program {
             .instructions
             .iter()
             .fold(String::new(), |acc, inst| format!("{}{}\n", acc, inst));
-
-        if let Some(lbl) = &self.end_label {
-            write!(f, "{}{}:", formatted_instructions, lbl)
-        } else {
-            write!(f, "{}", formatted_instructions)
-        }
+        write!(f, "{}", formatted_instructions)
     }
 }

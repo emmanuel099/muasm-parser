@@ -3,7 +3,7 @@ use nom::{
     branch::alt,
     bytes::complete::{tag, take_while, take_while1},
     character::complete::{char, digit1, hex_digit1, multispace1, not_line_ending, space0, space1},
-    combinator::{all_consuming, map, map_res, opt, value},
+    combinator::{all_consuming, map, map_res, value},
     multi::{fold_many0, many0},
     sequence::{preceded, terminated, tuple},
     IResult,
@@ -11,17 +11,10 @@ use nom::{
 use std::str::FromStr;
 
 pub fn parse_program(input: &str) -> Result<ir::Program, &'static str> {
-    let result = all_consuming(tuple((
-        instructions,
-        opt(preceded(whitespaces_or_comment, label)),
-        whitespaces_or_comment,
-    )))(input);
+    let result = all_consuming(terminated(instructions, whitespaces_or_comment))(input);
     match result {
-        Ok((_, (instructions, opt_end_label, _))) => {
-            let mut program = ir::Program::new(instructions);
-            if let Some(lbl) = opt_end_label {
-                program.set_end_label(lbl)
-            };
+        Ok((_, instructions)) => {
+            let program = ir::Program::new(instructions);
             Ok(program)
         }
         Err(_) => Err("Failed to parse program!"),
@@ -889,6 +882,7 @@ mod tests {
             load v, array1 + x
             load tmp, array2 + v << 8
         EndIf:
+            skip
         "#;
 
         let mut labeled_load = ir::Instruction::load(
@@ -905,7 +899,10 @@ mod tests {
         );
         labeled_load.set_label("Then".to_string());
 
-        let mut program = ir::Program::new(vec![
+        let mut labeled_skip = ir::Instruction::skip();
+        labeled_skip.set_label("EndIf".to_string());
+
+        let program = ir::Program::new(vec![
             ir::Instruction::assign(
                 ir::Register::new("cond".to_string()),
                 ir::Expression::Binary {
@@ -939,8 +936,8 @@ mod tests {
                     }),
                 },
             ),
+            labeled_skip,
         ]);
-        program.set_end_label("EndIf".to_string());
 
         assert_eq!(parse_program(src), Ok(program));
     }

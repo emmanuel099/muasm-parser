@@ -12,6 +12,7 @@ Then:
     load v, array1 + x
     load tmp, array2 + v << 8
 EndIf:
+    skip
 ```
 
 `input` can be parsed as follows:
@@ -68,7 +69,10 @@ Program {
             },
             label: None,
         },
+        Instruction {
+            operation: Skip,
+            label: Some("EndIf"),
+        },
     ],
-    end_label: Some("EndIf"),
 }
 ```
