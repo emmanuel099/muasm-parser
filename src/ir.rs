@@ -164,6 +164,7 @@ impl fmt::Display for Operation {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Instruction {
     operation: Operation,
+    address: u64,
     label: Option<String>,
 }
 
@@ -172,6 +173,7 @@ impl Instruction {
     pub fn new(operation: Operation) -> Self {
         Self {
             operation,
+            address: 0,
             label: None,
         }
     }
@@ -179,6 +181,15 @@ impl Instruction {
     #[must_use]
     pub fn operation(&self) -> &Operation {
         &self.operation
+    }
+
+    pub fn set_address(&mut self, address: u64) {
+        self.address = address;
+    }
+
+    #[must_use]
+    pub fn address(&self) -> u64 {
+        self.address
     }
 
     pub fn set_label(&mut self, label: String) {

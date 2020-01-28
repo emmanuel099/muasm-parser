@@ -28,7 +28,8 @@ fn instructions(input: &str) -> IResult<&str, Vec<ir::Instruction>> {
             alt((labeled_instruction, instruction)),
         ),
         Vec::new(),
-        |mut instructions: Vec<_>, inst| {
+        |mut instructions: Vec<_>, mut inst| {
+            inst.set_address(instructions.len() as u64);
             instructions.push(inst);
             instructions
         },
@@ -728,14 +729,22 @@ mod tests {
         assert_eq!(
             parse_program("beqz x, 42\nstore x, 42"),
             Ok(ir::Program::new(vec![
-                ir::Instruction::branch_if_zero(
-                    ir::Register::new("x".to_string()),
-                    ir::Target::Location(42)
-                ),
-                ir::Instruction::store(
-                    ir::Register::new("x".to_string()),
-                    ir::Expression::NumberLiteral(42)
-                ),
+                {
+                    let mut inst = ir::Instruction::branch_if_zero(
+                        ir::Register::new("x".to_string()),
+                        ir::Target::Location(42),
+                    );
+                    inst.set_address(0);
+                    inst
+                },
+                {
+                    let mut inst = ir::Instruction::store(
+                        ir::Register::new("x".to_string()),
+                        ir::Expression::NumberLiteral(42),
+                    );
+                    inst.set_address(1);
+                    inst
+                },
             ]))
         );
     }
@@ -745,14 +754,22 @@ mod tests {
         assert_eq!(
             parse_program("beqz x, 42\nstore x, 42"),
             Ok(ir::Program::new(vec![
-                ir::Instruction::branch_if_zero(
-                    ir::Register::new("x".to_string()),
-                    ir::Target::Location(42)
-                ),
-                ir::Instruction::store(
-                    ir::Register::new("x".to_string()),
-                    ir::Expression::NumberLiteral(42)
-                ),
+                {
+                    let mut inst = ir::Instruction::branch_if_zero(
+                        ir::Register::new("x".to_string()),
+                        ir::Target::Location(42),
+                    );
+                    inst.set_address(0);
+                    inst
+                },
+                {
+                    let mut inst = ir::Instruction::store(
+                        ir::Register::new("x".to_string()),
+                        ir::Expression::NumberLiteral(42),
+                    );
+                    inst.set_address(1);
+                    inst
+                },
             ]))
         );
     }
@@ -762,14 +779,22 @@ mod tests {
         assert_eq!(
             parse_program("beqz x, 42\n\n\nstore x, 42"),
             Ok(ir::Program::new(vec![
-                ir::Instruction::branch_if_zero(
-                    ir::Register::new("x".to_string()),
-                    ir::Target::Location(42)
-                ),
-                ir::Instruction::store(
-                    ir::Register::new("x".to_string()),
-                    ir::Expression::NumberLiteral(42)
-                ),
+                {
+                    let mut inst = ir::Instruction::branch_if_zero(
+                        ir::Register::new("x".to_string()),
+                        ir::Target::Location(42),
+                    );
+                    inst.set_address(0);
+                    inst
+                },
+                {
+                    let mut inst = ir::Instruction::store(
+                        ir::Register::new("x".to_string()),
+                        ir::Expression::NumberLiteral(42),
+                    );
+                    inst.set_address(1);
+                    inst
+                },
             ]))
         );
     }
@@ -778,10 +803,14 @@ mod tests {
     fn parse_program_with_leading_newline() {
         assert_eq!(
             parse_program("\nbeqz x, 42"),
-            Ok(ir::Program::new(vec![ir::Instruction::branch_if_zero(
-                ir::Register::new("x".to_string()),
-                ir::Target::Location(42)
-            )]))
+            Ok(ir::Program::new(vec![{
+                let mut inst = ir::Instruction::branch_if_zero(
+                    ir::Register::new("x".to_string()),
+                    ir::Target::Location(42),
+                );
+                inst.set_address(0);
+                inst
+            }]))
         );
     }
 
@@ -789,10 +818,14 @@ mod tests {
     fn parse_program_with_trailing_newline() {
         assert_eq!(
             parse_program("beqz x, 42\n"),
-            Ok(ir::Program::new(vec![ir::Instruction::branch_if_zero(
-                ir::Register::new("x".to_string()),
-                ir::Target::Location(42)
-            )]))
+            Ok(ir::Program::new(vec![{
+                let mut inst = ir::Instruction::branch_if_zero(
+                    ir::Register::new("x".to_string()),
+                    ir::Target::Location(42),
+                );
+                inst.set_address(0);
+                inst
+            }]))
         );
     }
 
@@ -801,14 +834,22 @@ mod tests {
         assert_eq!(
             parse_program("   \tbeqz x, 42\t\n \n\n store x, 42  "),
             Ok(ir::Program::new(vec![
-                ir::Instruction::branch_if_zero(
-                    ir::Register::new("x".to_string()),
-                    ir::Target::Location(42)
-                ),
-                ir::Instruction::store(
-                    ir::Register::new("x".to_string()),
-                    ir::Expression::NumberLiteral(42)
-                ),
+                {
+                    let mut inst = ir::Instruction::branch_if_zero(
+                        ir::Register::new("x".to_string()),
+                        ir::Target::Location(42),
+                    );
+                    inst.set_address(0);
+                    inst
+                },
+                {
+                    let mut inst = ir::Instruction::store(
+                        ir::Register::new("x".to_string()),
+                        ir::Expression::NumberLiteral(42),
+                    );
+                    inst.set_address(1);
+                    inst
+                },
             ]))
         );
     }
@@ -825,50 +866,66 @@ mod tests {
         assert_eq!(
             parse_program(src),
             Ok(ir::Program::new(vec![
-                ir::Instruction::assign(
-                    ir::Register::new("cond".to_string()),
-                    ir::Expression::Binary {
-                        op: ir::BinaryOperator::SLt,
-                        lhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
-                            "x".to_string()
-                        ))),
-                        rhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
-                            "array1_len".to_string()
-                        ))),
-                    }
-                ),
-                ir::Instruction::branch_if_zero(
-                    ir::Register::new("cond".to_string()),
-                    ir::Target::Location(5)
-                ),
-                ir::Instruction::load(
-                    ir::Register::new("v".to_string()),
-                    ir::Expression::Binary {
-                        op: ir::BinaryOperator::Add,
-                        lhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
-                            "array1".to_string()
-                        ))),
-                        rhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
-                            "x".to_string()
-                        ))),
-                    }
-                ),
-                ir::Instruction::load(
-                    ir::Register::new("tmp".to_string()),
-                    ir::Expression::Binary {
-                        op: ir::BinaryOperator::Add,
-                        lhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
-                            "array2".to_string()
-                        ))),
-                        rhs: Box::new(ir::Expression::Binary {
-                            op: ir::BinaryOperator::Shl,
+                {
+                    let mut inst = ir::Instruction::assign(
+                        ir::Register::new("cond".to_string()),
+                        ir::Expression::Binary {
+                            op: ir::BinaryOperator::SLt,
                             lhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
-                                "v".to_string()
+                                "x".to_string(),
                             ))),
-                            rhs: Box::new(ir::Expression::NumberLiteral(8)),
-                        }),
-                    }
-                ),
+                            rhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
+                                "array1_len".to_string(),
+                            ))),
+                        },
+                    );
+                    inst.set_address(0);
+                    inst
+                },
+                {
+                    let mut inst = ir::Instruction::branch_if_zero(
+                        ir::Register::new("cond".to_string()),
+                        ir::Target::Location(5),
+                    );
+                    inst.set_address(1);
+                    inst
+                },
+                {
+                    let mut inst = ir::Instruction::load(
+                        ir::Register::new("v".to_string()),
+                        ir::Expression::Binary {
+                            op: ir::BinaryOperator::Add,
+                            lhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
+                                "array1".to_string(),
+                            ))),
+                            rhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
+                                "x".to_string(),
+                            ))),
+                        },
+                    );
+                    inst.set_address(2);
+                    inst
+                },
+                {
+                    let mut inst = ir::Instruction::load(
+                        ir::Register::new("tmp".to_string()),
+                        ir::Expression::Binary {
+                            op: ir::BinaryOperator::Add,
+                            lhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
+                                "array2".to_string(),
+                            ))),
+                            rhs: Box::new(ir::Expression::Binary {
+                                op: ir::BinaryOperator::Shl,
+                                lhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
+                                    "v".to_string(),
+                                ))),
+                                rhs: Box::new(ir::Expression::NumberLiteral(8)),
+                            }),
+                        },
+                    );
+                    inst.set_address(3);
+                    inst
+                },
             ]))
         );
     }
@@ -885,58 +942,74 @@ mod tests {
             skip
         "#;
 
-        let mut labeled_load = ir::Instruction::load(
-            ir::Register::new("v".to_string()),
-            ir::Expression::Binary {
-                op: ir::BinaryOperator::Add,
-                lhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
-                    "array1".to_string(),
-                ))),
-                rhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
-                    "x".to_string(),
-                ))),
-            },
-        );
-        labeled_load.set_label("Then".to_string());
-
-        let mut labeled_skip = ir::Instruction::skip();
-        labeled_skip.set_label("EndIf".to_string());
-
         let program = ir::Program::new(vec![
-            ir::Instruction::assign(
-                ir::Register::new("cond".to_string()),
-                ir::Expression::Binary {
-                    op: ir::BinaryOperator::SLt,
-                    lhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
-                        "x".to_string(),
-                    ))),
-                    rhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
-                        "array1_len".to_string(),
-                    ))),
-                },
-            ),
-            ir::Instruction::branch_if_zero(
-                ir::Register::new("cond".to_string()),
-                ir::Target::Label("EndIf".to_string()),
-            ),
-            labeled_load,
-            ir::Instruction::load(
-                ir::Register::new("tmp".to_string()),
-                ir::Expression::Binary {
-                    op: ir::BinaryOperator::Add,
-                    lhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
-                        "array2".to_string(),
-                    ))),
-                    rhs: Box::new(ir::Expression::Binary {
-                        op: ir::BinaryOperator::Shl,
+            {
+                let mut inst = ir::Instruction::assign(
+                    ir::Register::new("cond".to_string()),
+                    ir::Expression::Binary {
+                        op: ir::BinaryOperator::SLt,
                         lhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
-                            "v".to_string(),
+                            "x".to_string(),
                         ))),
-                        rhs: Box::new(ir::Expression::NumberLiteral(8)),
-                    }),
-                },
-            ),
-            labeled_skip,
+                        rhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
+                            "array1_len".to_string(),
+                        ))),
+                    },
+                );
+                inst.set_address(0);
+                inst
+            },
+            {
+                let mut inst = ir::Instruction::branch_if_zero(
+                    ir::Register::new("cond".to_string()),
+                    ir::Target::Label("EndIf".to_string()),
+                );
+                inst.set_address(1);
+                inst
+            },
+            {
+                let mut inst = ir::Instruction::load(
+                    ir::Register::new("v".to_string()),
+                    ir::Expression::Binary {
+                        op: ir::BinaryOperator::Add,
+                        lhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
+                            "array1".to_string(),
+                        ))),
+                        rhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
+                            "x".to_string(),
+                        ))),
+                    },
+                );
+                inst.set_address(2);
+                inst.set_label("Then".to_string());
+                inst
+            },
+            {
+                let mut inst = ir::Instruction::load(
+                    ir::Register::new("tmp".to_string()),
+                    ir::Expression::Binary {
+                        op: ir::BinaryOperator::Add,
+                        lhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
+                            "array2".to_string(),
+                        ))),
+                        rhs: Box::new(ir::Expression::Binary {
+                            op: ir::BinaryOperator::Shl,
+                            lhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
+                                "v".to_string(),
+                            ))),
+                            rhs: Box::new(ir::Expression::NumberLiteral(8)),
+                        }),
+                    },
+                );
+                inst.set_address(3);
+                inst
+            },
+            {
+                let mut inst = ir::Instruction::skip();
+                inst.set_address(4);
+                inst.set_label("EndIf".to_string());
+                inst
+            },
         ]);
 
         assert_eq!(parse_program(src), Ok(program));
@@ -976,23 +1049,35 @@ mod tests {
         assert_eq!(
             parse_program(src),
             Ok(ir::Program::new(vec![
-                ir::Instruction::assign(
-                    ir::Register::new("c".to_string()),
-                    ir::Expression::Binary {
-                        op: ir::BinaryOperator::SLt,
-                        lhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
-                            "x".to_string()
-                        ))),
-                        rhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
-                            "y".to_string()
-                        ))),
-                    }
-                ),
-                ir::Instruction::branch_if_zero(
-                    ir::Register::new("c".to_string()),
-                    ir::Target::Location(3)
-                ),
-                ir::Instruction::skip(),
+                {
+                    let mut inst = ir::Instruction::assign(
+                        ir::Register::new("c".to_string()),
+                        ir::Expression::Binary {
+                            op: ir::BinaryOperator::SLt,
+                            lhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
+                                "x".to_string(),
+                            ))),
+                            rhs: Box::new(ir::Expression::RegisterRef(ir::Register::new(
+                                "y".to_string(),
+                            ))),
+                        },
+                    );
+                    inst.set_address(0);
+                    inst
+                },
+                {
+                    let mut inst = ir::Instruction::branch_if_zero(
+                        ir::Register::new("c".to_string()),
+                        ir::Target::Location(3),
+                    );
+                    inst.set_address(1);
+                    inst
+                },
+                {
+                    let mut inst = ir::Instruction::skip();
+                    inst.set_address(2);
+                    inst
+                },
             ]))
         );
     }
