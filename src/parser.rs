@@ -263,6 +263,10 @@ fn barrier_instruction(input: &str) -> IResult<&str, ir::Instruction> {
     value(ir::Instruction::barrier(), tag("spbarr"))(input)
 }
 
+fn flush_instruction(input: &str) -> IResult<&str, ir::Instruction> {
+    value(ir::Instruction::flush(), tag("flush"))(input)
+}
+
 fn assignment_instruction(input: &str) -> IResult<&str, ir::Instruction> {
     map(
         tuple((
@@ -335,6 +339,7 @@ fn instruction(input: &str) -> IResult<&str, ir::Instruction> {
     alt((
         skip_instruction,
         barrier_instruction,
+        flush_instruction,
         assignment_instruction,
         conditional_assignment_instruction,
         load_instruction,
@@ -607,6 +612,11 @@ mod tests {
     #[test]
     fn parse_barrier_instruction() {
         assert_eq!(instruction("spbarr"), Ok(("", ir::Instruction::barrier())));
+    }
+
+    #[test]
+    fn parse_flush_instruction() {
+        assert_eq!(instruction("flush"), Ok(("", ir::Instruction::flush())));
     }
 
     #[test]

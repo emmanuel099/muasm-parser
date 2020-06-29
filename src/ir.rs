@@ -112,6 +112,7 @@ impl fmt::Display for Target {
 pub enum Operation {
     Skip,
     Barrier,
+    Flush,
     Assignment {
         reg: Register,
         expr: Expression,
@@ -143,6 +144,7 @@ impl fmt::Display for Operation {
         match self {
             Self::Skip => write!(f, "skip"),
             Self::Barrier => write!(f, "barrier"),
+            Self::Flush => write!(f, "flush"),
             Self::Assignment { reg, expr } => write!(f, "{} = {}", reg, expr),
             Self::ConditionalAssignment { reg, expr, cond } => {
                 write!(f, "{} = {} if {}", reg, expr, cond)
@@ -203,6 +205,11 @@ impl Instruction {
     #[must_use]
     pub fn barrier() -> Self {
         Self::new(Operation::Barrier)
+    }
+
+    #[must_use]
+    pub fn flush() -> Self {
+        Self::new(Operation::Flush)
     }
 
     #[must_use]
