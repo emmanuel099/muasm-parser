@@ -55,7 +55,7 @@ pub enum BinaryOperator {
     SLt,
     SGe,
     SGt,
-    r#Eq,
+    Eq,
     Neq,
 }
 
