@@ -244,66 +244,42 @@ impl Instruction {
 
     #[must_use]
     pub fn is_skip(&self) -> bool {
-        self.operation == Operation::Skip
+        matches!(self.operation, Operation::Skip)
     }
 
     #[must_use]
     pub fn is_barrier(&self) -> bool {
-        self.operation == Operation::Barrier
+        matches!(self.operation, Operation::Barrier)
     }
 
     #[must_use]
     pub fn is_assign(&self) -> bool {
-        if let Operation::Assignment { .. } = self.operation {
-            true
-        } else {
-            false
-        }
+        matches!(self.operation, Operation::Assignment { .. })
     }
 
     #[must_use]
     pub fn is_assign_if(&self) -> bool {
-        if let Operation::ConditionalAssignment { .. } = self.operation {
-            true
-        } else {
-            false
-        }
+        matches!(self.operation, Operation::ConditionalAssignment { .. })
     }
 
     #[must_use]
     pub fn is_load(&self) -> bool {
-        if let Operation::Load { .. } = self.operation {
-            true
-        } else {
-            false
-        }
+        matches!(self.operation, Operation::Load { .. })
     }
 
     #[must_use]
     pub fn is_store(&self) -> bool {
-        if let Operation::Store { .. } = self.operation {
-            true
-        } else {
-            false
-        }
+        matches!(self.operation, Operation::Store { .. })
     }
 
     #[must_use]
     pub fn is_jump(&self) -> bool {
-        if let Operation::Jump { .. } = self.operation {
-            true
-        } else {
-            false
-        }
+        matches!(self.operation, Operation::Jump { .. })
     }
 
     #[must_use]
     pub fn is_branch_if_zero(&self) -> bool {
-        if let Operation::BranchIfZero { .. } = self.operation {
-            true
-        } else {
-            false
-        }
+        matches!(self.operation, Operation::BranchIfZero { .. })
     }
 }
 
