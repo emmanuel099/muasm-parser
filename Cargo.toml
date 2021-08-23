@@ -11,5 +11,5 @@ keywords = ["parser", "muasm", "parsing"]
 categories = ["parsing"]
 
 [dependencies]
-nom = "6.0.1"
+nom = "7.0.0"
 enum-display-derive = "0.1.0"
