@@ -27,7 +27,7 @@ fn instructions(input: &str) -> IResult<&str, Vec<ir::Instruction>> {
             whitespaces_or_comment,
             alt((labeled_instruction, instruction)),
         ),
-        Vec::new(),
+        Vec::new,
         |mut instructions: Vec<_>, mut inst| {
             inst.set_address(instructions.len() as u64);
             instructions.push(inst);
