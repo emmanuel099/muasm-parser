@@ -2,7 +2,7 @@
 name = "muasm_parser"
 version = "0.1.0"
 authors = ["Emmanuel Pescosta <emmanuelpescosta099@gmail.com>"]
-edition = "2018"
+edition = "2021"
 description = "µASM Parser"
 license = "Apache-2.0"
 repository = "https://github.com/emmanuel099/muasm-parser"
